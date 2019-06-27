@@ -192,6 +192,7 @@ bool TinyKtx_GetValue(TinyKtx_ContextHandle handle, char const *key, void const 
 		}
 		curKey = curKey + ((curKey->size + 3u) & 4u);
 	}
+	return false;
 }
 
 bool TinyKtx_Is1D(TinyKtx_ContextHandle handle) {
@@ -331,183 +332,174 @@ bool TinyKtx_NeedsEndianCorrecting(TinyKtx_ContextHandle handle) {
 
 	return ctx->sameEndian == false;
 }
-bool TinyKtx_CrackFormatToGL(TinyKTX_Format format, uint32_t *glformat, uint32_t* gltype) {
+#define FT(fmt, type, inttype) *glformat = TINYKTX_GL_FORMAT_##fmt; *gltype = TINYKTX_GL_TYPE_##type; *glinternalformat = TINYKTX_GL_INTFORMAT_##inttype; return true;
+#define FTC(fmt, inttype) *glformat = TINYKTX_GL_FORMAT_##fmt; *gltype = TINYKTX_GL_TYPE_COMPRESSED; *glinternalformat = TINYKTX_GL_COMPRESSED_##inttype; return true;
+
+bool TinyKtx_CrackFormatToGL(TinyKTX_Format format, uint32_t *glformat, uint32_t* gltype, uint32_t* glinternalformat) {
 	switch (format) {
-	case R4G4_UNORM_PACK8:;
-	case R4G4B4A4_UNORM_PACK16: break;
-	case B4G4R4A4_UNORM_PACK16: break;
-	case R5G6B5_UNORM_PACK16: break;
-	case B5G6R5_UNORM_PACK16: break;
-	case R5G5B5A1_UNORM_PACK16: break;
-	case B5G5R5A1_UNORM_PACK16: break;
-	case A1R5G5B5_UNORM_PACK16: break;
+	case R4G4_UNORM_PACK8: break;
+	case R4G4B4A4_UNORM_PACK16: FT(RGBA, UNSIGNED_SHORT_4_4_4_4, RGB4)
+	case B4G4R4A4_UNORM_PACK16: FT(BGRA, UNSIGNED_SHORT_4_4_4_4_REV, RGB4)
+	case R5G6B5_UNORM_PACK16: 	FT(RGB, UNSIGNED_SHORT_5_6_5, RGB565)
+	case B5G6R5_UNORM_PACK16: 	FT(BGR, UNSIGNED_SHORT_5_6_5_REV, RGB565)
+	case R5G5B5A1_UNORM_PACK16: FT(RGBA, UNSIGNED_SHORT_5_5_5_1, RGB5_A1)
+	case A1R5G5B5_UNORM_PACK16: FT(BGRA, UNSIGNED_SHORT_1_5_5_5_REV, RGB5_A1)
+	case B5G5R5A1_UNORM_PACK16: FT(BGRA, UNSIGNED_SHORT_5_5_5_1, RGB5_A1)
 
-	case A2R10G10B10_UNORM_PACK32: break;
-	case A2R10G10B10_UINT_PACK32: break;
-	case A2B10G10R10_UNORM_PACK32: break;
-	case A2B10G10R10_UINT_PACK32: break;
+	case A2R10G10B10_UNORM_PACK32: 	FT(BGRA, UNSIGNED_INT_2_10_10_10_REV, RGB10_A2)
+	case A2R10G10B10_UINT_PACK32: 	break; //FT(BGRA_INTEGER, UNSIGNED_INT_2_10_10_10_REV, RGB10_A2UI)
+	case A2B10G10R10_UNORM_PACK32: break; //FT(ABGR, UNSIGNED_INT_2_10_10_10_REV)
+	case A2B10G10R10_UINT_PACK32: break; //FT(ABGR_INTEGER, UNSIGNED_INT_2_10_10_10_REV)
 
-	case R8_UNORM: 		*glformat = TINYKTX_GL_RED; *gltype = TINYKTX_GL_UNSIGNED_BYTE; return true;
-	case R8_SNORM: 		*glformat = TINYKTX_GL_RED; *gltype = TINYKTX_GL_BYTE; return true;
-	case R8_UINT: 		*glformat = TINYKTX_GL_RED_INTEGER; *gltype = TINYKTX_GL_UNSIGNED_BYTE; return true;
-	case R8_SINT: 		*glformat = TINYKTX_GL_RED_INTEGER; *gltype = TINYKTX_GL_BYTE; return true;
-	case R8_SRGB: 		break; //*glformat = TINYKTX_GL_SR8; *gltype = TINYKTX_GL_UNSIGNED_BYTE; return true;
+	case R8_UNORM: 		FT(RED, UNSIGNED_BYTE, R8)
+	case R8_SNORM: 		FT(RED, BYTE, R8_SNORM)
+	case R8_UINT: 		FT(RED_INTEGER, UNSIGNED_BYTE, R8UI)
+	case R8_SINT: 		FT(RED_INTEGER, BYTE, R8I)
+	case R8_SRGB: 		break; //FT(SRED, SR8)
 
-	case R8G8_UNORM: 	*glformat = TINYKTX_GL_RG; *gltype = TINYKTX_GL_UNSIGNED_BYTE; return true;
-	case R8G8_SNORM: 	*glformat = TINYKTX_GL_RG; *gltype = TINYKTX_GL_BYTE; return true;
-	case R8G8_UINT: 	*glformat = TINYKTX_GL_RG_INTEGER; *gltype = TINYKTX_GL_UNSIGNED_BYTE; return true;
-	case R8G8_SINT: 	*glformat = TINYKTX_GL_RG_INTEGER; *gltype = TINYKTX_GL_BYTE; return true;
-	case R8G8_SRGB: 	break; //*glformat = TINYKTX_GL_SRG8; *gltype = TINYKTX_GL_UNSIGNED_BYTE; return true;
+	case R8G8_UNORM: 	FT(RG, UNSIGNED_BYTE, RG8)
+	case R8G8_SNORM: 	FT(RG, BYTE, RG8_SNORM)
+	case R8G8_UINT: 	FT(RG_INTEGER, UNSIGNED_BYTE, RG8UI)
+	case R8G8_SINT: 	FT(RG_INTEGER, BYTE, RG8I)
+	case R8G8_SRGB: 	break; //FT(SRG, SRG8)
 
-	case R8G8B8_UNORM: *glformat = TINYKTX_GL_RGB; *gltype = TINYKTX_GL_UNSIGNED_BYTE; return true;
-	case R8G8B8_SNORM: *glformat = TINYKTX_GL_RGB; *gltype = TINYKTX_GL_BYTE; return true;
-	case R8G8B8_UINT:  *glformat = TINYKTX_GL_RGB_INTEGER; *gltype = TINYKTX_GL_UNSIGNED_BYTE; return true;
-	case R8G8B8_SINT:  *glformat = TINYKTX_GL_RGB_INTEGER; *gltype = TINYKTX_GL_BYTE; return true;
-	case R8G8B8_SRGB:  *glformat = GL_SRGB; *gltype = TINYKTX_GL_UNSIGNED_BYTE; return true;
+	case R8G8B8_UNORM: FT(RGB, UNSIGNED_BYTE, RGB8)
+	case R8G8B8_SNORM: FT(RGB, BYTE, RGB8_SNORM)
+	case R8G8B8_UINT:  FT(RGB_INTEGER, UNSIGNED_BYTE, RGB8UI)
+	case R8G8B8_SINT:  FT(RGB_INTEGER, BYTE, RGB8I)
+	case R8G8B8_SRGB:  FT(SRGB, UNSIGNED_BYTE, RGB8)
 
-	case B8G8R8_UNORM: *glformat = TINYKTX_GL_BGR; *gltype = TINYKTX_GL_UNSIGNED_BYTE; return true;
-	case B8G8R8_SNORM: *glformat = TINYKTX_GL_BGR; *gltype = TINYKTX_GL_BYTE; return true;
-	case B8G8R8_UINT:  *glformat = TINYKTX_GL_BGR_INTEGER; *gltype = TINYKTX_GL_UNSIGNED_BYTE; return true;
-	case B8G8R8_SINT:  *glformat = TINYKTX_GL_BGR_INTEGER; *gltype = TINYKTX_GL_BYTE; return true;
-	case B8G8R8_SRGB:  break;//*glformat = TINYKTX_GL_SBGR8; *gltype = TINYKTX_GL_UNSIGNED_BYTE; return true;
+	case B8G8R8_UNORM: FT(BGR, UNSIGNED_BYTE, RGB8)
+	case B8G8R8_SNORM: FT(BGR, BYTE, RGB8_SNORM)
+	case B8G8R8_UINT:  FT(BGR_INTEGER, UNSIGNED_BYTE, RGB8UI)
+	case B8G8R8_SINT:  FT(BGR_INTEGER, BYTE, RGB8I)
+	case B8G8R8_SRGB:  break;//FT(SBGR, SRGB8)
 
-	case R8G8B8A8_UNORM:*glformat = TINYKTX_GL_RGBA; *gltype = TINYKTX_GL_UNSIGNED_BYTE; return true;
-	case R8G8B8A8_SNORM:*glformat = TINYKTX_GL_RGBA; *gltype = TINYKTX_GL_BYTE; return true;
-	case R8G8B8A8_UINT: *glformat = TINYKTX_GL_RGBA_INTEGER; *gltype = TINYKTX_GL_UNSIGNED_BYTE; return true;
-	case R8G8B8A8_SINT: *glformat = TINYKTX_GL_RGBA_INTEGER; *gltype = TINYKTX_GL_BYTE; return true;
-	case R8G8B8A8_SRGB: *glformat = GL_SRGB_ALPHA; *gltype = TINYKTX_GL_UNSIGNED_BYTE; return true;
+	case R8G8B8A8_UNORM:FT(RGBA, UNSIGNED_BYTE, RGBA8)
+	case R8G8B8A8_SNORM:FT(RGBA, BYTE, RGBA8_SNORM)
+	case R8G8B8A8_UINT: FT(RGBA_INTEGER, UNSIGNED_BYTE, RGBA8UI)
+	case R8G8B8A8_SINT: FT(RGBA_INTEGER, BYTE, RGBA8I)
+	case R8G8B8A8_SRGB: FT(SRGB_ALPHA, UNSIGNED_BYTE, RGBA8)
 
-	case B8G8R8A8_UNORM:*glformat = TINYKTX_GL_BGRA; *gltype = TINYKTX_GL_UNSIGNED_BYTE; return true;
-	case B8G8R8A8_SNORM:*glformat = TINYKTX_GL_BGRA; *gltype = TINYKTX_GL_BYTE; return true;
-	case B8G8R8A8_UINT: *glformat = TINYKTX_GL_BGRA_INTEGER; *gltype = TINYKTX_GL_UNSIGNED_BYTE; return true;
-	case B8G8R8A8_SINT: *glformat = TINYKTX_GL_BGRA_INTEGER; *gltype = TINYKTX_GL_BYTE; return true;
-	case B8G8R8A8_SRGB: break; //*glformat = TINYKTX_GL_SBGRA8; *gltype = TINYKTX_GL_UNSIGNED_BYTE; return true;
+	case B8G8R8A8_UNORM: FT(BGRA, UNSIGNED_BYTE, RGBA8)
+	case B8G8R8A8_SNORM: FT(BGRA, BYTE, RGBA8_SNORM)
+	case B8G8R8A8_UINT: FT(BGRA_INTEGER, UNSIGNED_BYTE, RGBA8UI)
+	case B8G8R8A8_SINT: FT(BGRA_INTEGER, BYTE, RGBA8I)
+	case B8G8R8A8_SRGB: break; //FT(SBGR_ALPHA, UNSIGNED_BYTE)
 
-	case A8B8G8R8_UNORM_PACK32: break;//*glformat = TINYKTX_GL_ARGB; *gltype = TINYKTX_GL_UNSIGNED_BYTE; return true;
-	case A8B8G8R8_SNORM_PACK32: break;//*glformat = TINYKTX_GL_ARGB; *gltype = TINYKTX_GL_BYTE; return true;
-	case A8B8G8R8_UINT_PACK32: break;//*glformat = TINYKTX_GL_ARGB_INTEGER; *gltype = TINYKTX_GL_UNSIGNED_BYTE; return true;
-	case A8B8G8R8_SINT_PACK32: break;//*glformat = TINYKTX_GL_ARGBA_INTEGER; *gltype = TINYKTX_GL_BYTE; return true;
-	case A8B8G8R8_SRGB_PACK32: break;//*glformat = TINYKTX_GL_SARGB8; *gltype = TINYKTX_GL_UNSIGNED_BYTE; return true;
+	case E5B9G9R9_UFLOAT_PACK32: FT(BGR, UNSIGNED_INT_5_9_9_9_REV, RGB9_E5);
+	case A8B8G8R8_UNORM_PACK32: FT(ABGR, UNSIGNED_BYTE, RGBA8)
+	case A8B8G8R8_SNORM_PACK32: FT(ABGR, BYTE, RGBA8)
+	case A8B8G8R8_UINT_PACK32:  break;//FT(ABGR_INTEGER, UNSIGNED_BYTE)
+	case A8B8G8R8_SINT_PACK32:  break;//FT(ABGR_INTEGER, BYTE)
+	case A8B8G8R8_SRGB_PACK32:  break;//FT(ALPHA_SBGR, UNSIGNED_BYTE)
+	case B10G11R11_UFLOAT_PACK32: FT(BGR, UNSIGNED_INT_10F_11F_11F_REV, R11F_G11F_B10F)
 
-	case R16_UNORM: *glformat = TINYKTX_GL_RED; *gltype = TINYKTX_GL_UNSIGNED_SHORT; return true;
-	case R16_SNORM: *glformat = TINYKTX_GL_RED; *gltype = TINYKTX_GL_SHORT; return true;
-	case R16_UINT: 	*glformat = TINYKTX_GL_RED_INTEGER; *gltype = TINYKTX_GL_UNSIGNED_SHORT; return true;
-	case R16_SINT: 	*glformat = TINYKTX_GL_RED_INTEGER; *gltype = TINYKTX_GL_SHORT; return true;
-	case R16_SFLOAT:*glformat = TINYKTX_GL_RED; *gltype = TINYKTX_GL_HALF_FLOAT; return true;
+	case R16_UNORM: FT(RED, UNSIGNED_SHORT, R16)
+	case R16_SNORM: FT(RED, SHORT, R16_SNORM)
+	case R16_UINT: 	FT(RED_INTEGER, UNSIGNED_SHORT, R16UI)
+	case R16_SINT: 	FT(RED_INTEGER, SHORT, R16I)
+	case R16_SFLOAT:FT(RED, HALF_FLOAT, R16F)
 
-	case R16G16_UNORM: *glformat = TINYKTX_GL_RG; *gltype = TINYKTX_GL_UNSIGNED_SHORT; return true;
-	case R16G16_SNORM: *glformat = TINYKTX_GL_RG; *gltype = TINYKTX_GL_SHORT; return true;
-	case R16G16_UINT:  *glformat = TINYKTX_GL_RG_INTEGER; *gltype = TINYKTX_GL_UNSIGNED_SHORT; return true;
-	case R16G16_SINT:  *glformat = TINYKTX_GL_RG_INTEGER; *gltype = TINYKTX_GL_SHORT; return true;
-	case R16G16_SFLOAT:*glformat = TINYKTX_GL_RG; *gltype = TINYKTX_GL_HALF_FLOAT; return true;
+	case R16G16_UNORM: FT(RG, UNSIGNED_SHORT, RG16)
+	case R16G16_SNORM: FT(RG, SHORT, RG16_SNORM)
+	case R16G16_UINT:  FT(RG_INTEGER, UNSIGNED_SHORT, RG16UI)
+	case R16G16_SINT:  FT(RG_INTEGER, SHORT, RG16I)
+	case R16G16_SFLOAT:FT(RG, HALF_FLOAT, RG16F)
 
-	case R16G16B16_UNORM: *glformat = TINYKTX_GL_RGB; *gltype = TINYKTX_GL_UNSIGNED_SHORT; return true;
-	case R16G16B16_SNORM: *glformat = TINYKTX_GL_RGB; *gltype = TINYKTX_GL_SHORT; return true;
-	case R16G16B16_UINT:  *glformat = TINYKTX_GL_RGB_INTEGER; *gltype = TINYKTX_GL_UNSIGNED_SHORT; return true;
-	case R16G16B16_SINT:  *glformat = TINYKTX_GL_RGB_INTEGER; *gltype = TINYKTX_GL_SHORT; return true;
-	case R16G16B16_SFLOAT:*glformat = TINYKTX_GL_RGB; *gltype = TINYKTX_GL_HALF_FLOAT; return true;
+	case R16G16B16_UNORM: FT(RGB, UNSIGNED_SHORT, RGB16)
+	case R16G16B16_SNORM: FT(RGB, SHORT, RGB16_SNORM)
+	case R16G16B16_UINT:  FT(RGB_INTEGER, UNSIGNED_SHORT, RGB16UI)
+	case R16G16B16_SINT:  FT(RGB_INTEGER, SHORT, RGB16I)
+	case R16G16B16_SFLOAT: FT(RGB, HALF_FLOAT, RGB16F)
 
-	case R16G16B16A16_UNORM: *glformat = TINYKTX_GL_RGBA; *gltype = TINYKTX_GL_UNSIGNED_SHORT; return true;
-	case R16G16B16A16_SNORM: *glformat = TINYKTX_GL_RGBA; *gltype = TINYKTX_GL_SHORT; return true;
-	case R16G16B16A16_UINT:  *glformat = TINYKTX_GL_RGBA_INTEGER; *gltype = TINYKTX_GL_UNSIGNED_SHORT; return true;
-	case R16G16B16A16_SINT:  *glformat = TINYKTX_GL_RGBA_INTEGER; *gltype = TINYKTX_GL_SHORT; return true;
-	case R16G16B16A16_SFLOAT:*glformat = TINYKTX_GL_RGBA; *gltype = TINYKTX_GL_HALF_FLOAT; return true;
+	case R16G16B16A16_UNORM: FT(RGBA, UNSIGNED_SHORT, RGBA16)
+	case R16G16B16A16_SNORM: FT(RGBA, SHORT, RGBA16_SNORM)
+	case R16G16B16A16_UINT:  FT(RGBA_INTEGER, UNSIGNED_SHORT, RGBA16UI)
+	case R16G16B16A16_SINT:  FT(RGBA_INTEGER, SHORT,RGBA16I)
+	case R16G16B16A16_SFLOAT:FT(RGBA, HALF_FLOAT, RGBA16F)
 
-	case R32_UINT: 		*glformat = TINYKTX_GL_RED_INTEGER; *gltype = TINYKTX_GL_UNSIGNED_INT; return true;
-	case R32_SINT: 		*glformat = TINYKTX_GL_RED_INTEGER; *gltype = TINYKTX_GL_INT; return true;
-	case R32_SFLOAT: 	*glformat = TINYKTX_GL_RED; *gltype = TINYKTX_GL_FLOAT; return true;
+	case R32_UINT: 		FT(RED_INTEGER, UNSIGNED_INT,R32UI)
+	case R32_SINT: 		FT(RED_INTEGER, INT, R32I)
+	case R32_SFLOAT: 	FT(RED, FLOAT, R32F)
 
-	case R32G32_UINT: 	*glformat = TINYKTX_GL_RG_INTEGER; *gltype = TINYKTX_GL_UNSIGNED_INT; return true;
-	case R32G32_SINT: 	*glformat = TINYKTX_GL_RG_INTEGER; *gltype = TINYKTX_GL_INT; return true;
-	case R32G32_SFLOAT: *glformat = TINYKTX_GL_RG; *gltype = TINYKTX_GL_FLOAT; return true;
+	case R32G32_UINT: 	FT(RG_INTEGER, UNSIGNED_INT, RG32UI)
+	case R32G32_SINT: 	FT(RG_INTEGER, INT, RG32I)
+	case R32G32_SFLOAT: FT(RG, FLOAT, RG32F)
 
-	case R32G32B32_UINT: 		*glformat = TINYKTX_GL_RGB_INTEGER; *gltype = TINYKTX_GL_UNSIGNED_INT; return true;
-	case R32G32B32_SINT: 		*glformat = TINYKTX_GL_RGB_INTEGER; *gltype = TINYKTX_GL_INT; return true;
-	case R32G32B32_SFLOAT: 	*glformat = TINYKTX_GL_RGB; *gltype = TINYKTX_GL_FLOAT; return true;
+	case R32G32B32_UINT: 		FT(RGB_INTEGER, UNSIGNED_INT, RGB32UI)
+	case R32G32B32_SINT: 		FT(RGB_INTEGER, INT, RGB32I)
+	case R32G32B32_SFLOAT: 	FT(RGB_INTEGER, FLOAT, RGB32F)
 
-	case R32G32B32A32_UINT:  *glformat = TINYKTX_GL_RGBA_INTEGER; *gltype = TINYKTX_GL_UNSIGNED_INT; return true;
-	case R32G32B32A32_SINT:  *glformat = TINYKTX_GL_RGBA_INTEGER; *gltype = TINYKTX_GL_INT; return true;
-	case R32G32B32A32_SFLOAT:*glformat = TINYKTX_GL_RGBA; *gltype = TINYKTX_GL_FLOAT; return true;
+	case R32G32B32A32_UINT:  FT(RGBA_INTEGER, UNSIGNED_INT, RGBA32UI)
+	case R32G32B32A32_SINT:  FT(RGBA_INTEGER, INT, RGBA32I)
+	case R32G32B32A32_SFLOAT:FT(RGBA, FLOAT, RGBA32F)
 
+	case BC1_RGB_UNORM_BLOCK: FTC(RGB, RGB_S3TC_DXT1)
+	case BC1_RGB_SRGB_BLOCK: FTC(RGB, SRGB_S3TC_DXT1)
+	case BC1_RGBA_UNORM_BLOCK: FTC(RGBA, RGBA_S3TC_DXT1)
+	case BC1_RGBA_SRGB_BLOCK: FTC(RGBA, SRGB_ALPHA_S3TC_DXT1)
+	case BC2_UNORM_BLOCK: FTC(RGBA, RGBA_S3TC_DXT3)
+	case BC2_SRGB_BLOCK: FTC(RGBA, SRGB_ALPHA_S3TC_DXT3)
+	case BC3_UNORM_BLOCK: FTC(RGBA, RGBA_S3TC_DXT5)
+	case BC3_SRGB_BLOCK: FTC(RGBA, SRGB_ALPHA_S3TC_DXT5)
+	case BC4_UNORM_BLOCK: FTC(RED, RED_RGTC1)
+	case BC4_SNORM_BLOCK: FTC(RED, SIGNED_RED_RGTC1)
+	case BC5_UNORM_BLOCK: FTC(RG, RED_GREEN_RGTC2)
+	case BC5_SNORM_BLOCK: FTC(RG, SIGNED_RED_GREEN_RGTC2)
+	case BC6H_UFLOAT_BLOCK: FTC(RGB, RGB_BPTC_UNSIGNED_FLOAT)
+	case BC6H_SFLOAT_BLOCK: FTC(RGB, RGB_BPTC_SIGNED_FLOAT)
+	case BC7_UNORM_BLOCK: FTC(RGBA, RGBA_BPTC_UNORM)
+	case BC7_SRGB_BLOCK: FTC(RGBA, SRGB_ALPHA_BPTC_UNORM)
 
-	case B10G11R11_UFLOAT_PACK32: break;
-	case E5B9G9R9_UFLOAT_PACK32: break;
-	case D16_UNORM: break;
-	case X8_D24_UNORM_PACK32: break;
-	case D32_SFLOAT: break;
-	case S8_UINT: break;
-	case D16_UNORM_S8_UINT: break;
-	case D24_UNORM_S8_UINT: break;
-	case D32_SFLOAT_S8_UINT: break;
-	case BC1_RGB_UNORM_BLOCK: break;
-	case BC1_RGB_SRGB_BLOCK: break;
-	case BC1_RGBA_UNORM_BLOCK: break;
-	case BC1_RGBA_SRGB_BLOCK: break;
-	case BC2_UNORM_BLOCK: break;
-	case BC2_SRGB_BLOCK: break;
-	case BC3_UNORM_BLOCK: break;
-	case BC3_SRGB_BLOCK: break;
-	case BC4_UNORM_BLOCK: break;
-	case BC4_SNORM_BLOCK: break;
-	case BC5_UNORM_BLOCK: break;
-	case BC5_SNORM_BLOCK: break;
-	case BC6H_UFLOAT_BLOCK: break;
-	case BC6H_SFLOAT_BLOCK: break;
-	case BC7_UNORM_BLOCK: break;
-	case BC7_SRGB_BLOCK: break;
-	case PVR_2BPP_BLOCK: break;
-	case PVR_2BPPA_BLOCK: break;
-	case PVR_4BPP_BLOCK: break;
-	case PVR_4BPPA_BLOCK: break;
-	case PVR_2BPP_SRGB_BLOCK: break;
-	case PVR_2BPPA_SRGB_BLOCK: break;
-	case PVR_4BPP_SRGB_BLOCK: break;
-	case PVR_4BPPA_SRGB_BLOCK: break;
-	case ASTC_4x4_UNORM_BLOCK: break;
-	case ASTC_4x4_SRGB_BLOCK: break;
-	case ASTC_5x4_UNORM_BLOCK: break;
-	case ASTC_5x4_SRGB_BLOCK: break;
-	case ASTC_5x5_UNORM_BLOCK: break;
-	case ASTC_5x5_SRGB_BLOCK: break;
-	case ASTC_6x5_UNORM_BLOCK: break;
-	case ASTC_6x5_SRGB_BLOCK: break;
-	case ASTC_6x6_UNORM_BLOCK: break;
-	case ASTC_6x6_SRGB_BLOCK: break;
-	case ASTC_8x5_UNORM_BLOCK: break;
-	case ASTC_8x5_SRGB_BLOCK: break;
-	case ASTC_8x6_UNORM_BLOCK: break;
-	case ASTC_8x6_SRGB_BLOCK: break;
-	case ASTC_8x8_UNORM_BLOCK: break;
-	case ASTC_8x8_SRGB_BLOCK: break;
-	case ASTC_10x5_UNORM_BLOCK: break;
-	case ASTC_10x5_SRGB_BLOCK: break;
-	case ASTC_10x6_UNORM_BLOCK: break;
-	case ASTC_10x6_SRGB_BLOCK: break;
-	case ASTC_10x8_UNORM_BLOCK: break;
-	case ASTC_10x8_SRGB_BLOCK: break;
-	case ASTC_10x10_UNORM_BLOCK: break;
-	case ASTC_10x10_SRGB_BLOCK: break;
-	case ASTC_12x10_UNORM_BLOCK: break;
-	case ASTC_12x10_SRGB_BLOCK: break;
-	case ASTC_12x12_UNORM_BLOCK: break;
-	case ASTC_12x12_SRGB_BLOCK: break;
+	case ETC2_R8G8B8_UNORM_BLOCK: FTC(RGB, RGB8_ETC2)
+	case ETC2_R8G8B8A1_UNORM_BLOCK: FTC(RGBA, RGB8_PUNCHTHROUGH_ALPHA1_ETC2)
+	case ETC2_R8G8B8A8_UNORM_BLOCK: FTC(RGBA, RGBA8_ETC2_EAC)
+	case ETC2_R8G8B8_SRGB_BLOCK: FTC(SRGB, SRGB8_ETC2)
+	case ETC2_R8G8B8A1_SRGB_BLOCK: FTC(SRGB_ALPHA, SRGB8_PUNCHTHROUGH_ALPHA1_ETC2)
+	case ETC2_R8G8B8A8_SRGB_BLOCK: FTC(SRGB_ALPHA, SRGB8_ALPHA8_ETC2_EAC)
+	case EAC_R11_UNORM_BLOCK: FTC(RED, R11_EAC)
+	case EAC_R11G11_UNORM_BLOCK: FTC(RG, RG11_EAC)
+	case EAC_R11_SNORM_BLOCK: FTC(RED, SIGNED_R11_EAC)
+	case EAC_R11G11_SNORM_BLOCK: FTC(RG, SIGNED_RG11_EAC)
 
-	// TODO 64 bit formats
-	case R64_UINT: 	break;
-	case R64_SINT: 	break;
-	case R64_SFLOAT: break;
+	case PVR_2BPP_BLOCK: FTC(RGB, RGB_PVRTC_2BPPV1)
+	case PVR_2BPPA_BLOCK: FTC(RGBA, RGBA_PVRTC_2BPPV1);
+	case PVR_4BPP_BLOCK: FTC(RGB, RGB_PVRTC_4BPPV1)
+	case PVR_4BPPA_BLOCK: FTC(RGB, RGB_PVRTC_4BPPV1)
+	case PVR_2BPP_SRGB_BLOCK: FTC(SRGB, SRGB_PVRTC_2BPPV1)
+	case PVR_2BPPA_SRGB_BLOCK: FTC(SRGB_ALPHA, SRGB_ALPHA_PVRTC_2BPPV1);
+	case PVR_4BPP_SRGB_BLOCK: FTC(SRGB, SRGB_PVRTC_2BPPV1)
+	case PVR_4BPPA_SRGB_BLOCK: FTC(SRGB_ALPHA, SRGB_ALPHA_PVRTC_2BPPV1);
 
-	case R64G64_UINT: break;
-	case R64G64_SINT: break;
-	case R64G64_SFLOAT: break;
-
-	case R64G64B64_UINT: break;
-	case R64G64B64_SINT: break;
-	case R64G64B64_SFLOAT: break;
-
-	case R64G64B64A64_UINT: break;
-	case R64G64B64A64_SINT: break;
-	case R64G64B64A64_SFLOAT: break;
+	case ASTC_4x4_UNORM_BLOCK: FTC(RGBA, RGBA_ASTC_4x4)
+	case ASTC_4x4_SRGB_BLOCK: FTC(SRGB_ALPHA, SRGB8_ALPHA8_ASTC_4x4)
+	case ASTC_5x4_UNORM_BLOCK: FTC(RGBA, RGBA_ASTC_5x4)
+	case ASTC_5x4_SRGB_BLOCK: FTC(SRGB_ALPHA, SRGB8_ALPHA8_ASTC_5x4)
+	case ASTC_5x5_UNORM_BLOCK: FTC(RGBA, RGBA_ASTC_5x5)
+	case ASTC_5x5_SRGB_BLOCK: FTC(SRGB_ALPHA, SRGB8_ALPHA8_ASTC_5x5)
+	case ASTC_6x5_UNORM_BLOCK: FTC(RGBA, RGBA_ASTC_6x5)
+	case ASTC_6x5_SRGB_BLOCK: FTC(SRGB_ALPHA, SRGB8_ALPHA8_ASTC_6x5)
+	case ASTC_6x6_UNORM_BLOCK: FTC(RGBA, RGBA_ASTC_6x6)
+	case ASTC_6x6_SRGB_BLOCK: FTC(SRGB_ALPHA, SRGB8_ALPHA8_ASTC_6x6)
+	case ASTC_8x5_UNORM_BLOCK: FTC(RGBA, RGBA_ASTC_8x5)
+	case ASTC_8x5_SRGB_BLOCK: FTC(SRGB_ALPHA, SRGB8_ALPHA8_ASTC_8x5)
+	case ASTC_8x6_UNORM_BLOCK: FTC(RGBA, RGBA_ASTC_8x6)
+	case ASTC_8x6_SRGB_BLOCK: FTC(SRGB_ALPHA, SRGB8_ALPHA8_ASTC_8x6)
+	case ASTC_8x8_UNORM_BLOCK: FTC(RGBA, RGBA_ASTC_8x8)
+	case ASTC_8x8_SRGB_BLOCK: FTC(SRGB_ALPHA, SRGB8_ALPHA8_ASTC_8x8)
+	case ASTC_10x5_UNORM_BLOCK: FTC(RGBA, RGBA_ASTC_10x5)
+	case ASTC_10x5_SRGB_BLOCK: FTC(SRGB_ALPHA, SRGB8_ALPHA8_ASTC_10x5)
+	case ASTC_10x6_UNORM_BLOCK: FTC(RGBA, RGBA_ASTC_10x6)
+	case ASTC_10x6_SRGB_BLOCK: FTC(SRGB_ALPHA, SRGB8_ALPHA8_ASTC_10x6)
+	case ASTC_10x8_UNORM_BLOCK: FTC(RGBA, RGBA_ASTC_10x8);
+	case ASTC_10x8_SRGB_BLOCK: FTC(SRGB_ALPHA, SRGB8_ALPHA8_ASTC_10x8)
+	case ASTC_10x10_UNORM_BLOCK: FTC(RGBA, RGBA_ASTC_10x10)
+	case ASTC_10x10_SRGB_BLOCK: FTC(SRGB_ALPHA, SRGB8_ALPHA8_ASTC_10x10)
+	case ASTC_12x10_UNORM_BLOCK: FTC(RGBA, RGBA_ASTC_12x10)
+	case ASTC_12x10_SRGB_BLOCK: FTC(SRGB_ALPHA, SRGB8_ALPHA8_ASTC_12x10)
+	case ASTC_12x12_UNORM_BLOCK: FTC(RGBA, RGBA_ASTC_12x12)
+	case ASTC_12x12_SRGB_BLOCK: FTC(SRGB_ALPHA, SRGB8_ALPHA8_ASTC_12x12)
 
 	// not sure how to expres scaled yet in GL terms?
 	case R8_USCALED: break;
@@ -534,10 +526,11 @@ bool TinyKtx_CrackFormatToGL(TinyKTX_Format format, uint32_t *glformat, uint32_t
 	case R16G16B16_SSCALED: break;
 	case R16G16B16A16_USCALED: break;
 	case R16G16B16A16_SSCALED: break;
-
+	default:break;
 	}
+	return false;
 }
-
+#undef FT
 static uint32_t imageSize(TinyKtx_ContextHandle handle, uint32_t mipmaplevel, bool seekLast) {
 	TinyKtx_Context *ctx = (TinyKtx_Context *) handle;
 	if (ctx == NULL)
@@ -621,7 +614,7 @@ void const *TinyKtx_ImageRawData(TinyKtx_ContextHandle handle, uint32_t mipmaple
 	return ctx->mipmaps[mipmaplevel];
 }
 
-bool TinyKtx_WriteImage(TinyKtx_WriteCallbacks const *callbacks,
+bool TinyKtx_WriteImageGL(TinyKtx_WriteCallbacks const *callbacks,
 												void *user,
 												uint32_t width,
 												uint32_t height,
@@ -659,7 +652,7 @@ bool TinyKtx_WriteImage(TinyKtx_WriteCallbacks const *callbacks,
 
 	// TODO this might be wrong for non array cubemaps with < 4 bytes per pixel...
 	// cubemap padding needs factoring in.
-	for (uint32_t i = 0u; i < mipmapsizes; ++i) {
+	for (uint32_t i = 0u; i < mipmaplevels; ++i) {
 		callbacks->write(user, mipmapsizes + i, sizeof(uint32_t));
 		callbacks->write(user, mipmaps + i, mipmapsizes[i]);
 		callbacks->write(user, padding, ((mipmapsizes[i] + 3u) & 4u) - mipmapsizes[i]);
