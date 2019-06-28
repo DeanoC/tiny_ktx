@@ -6,202 +6,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-// ktx is based on GL (slightly confusing imho) texture format system
-// there is format, internal format, type etc.
-
-// we try and expose a more dx12/vulkan/metal style of format
-// but obviously still need to GL data so bare with me.
-// a TinyKTX_Format is the equivilent to GL/KTX Format and Type
-// the API doesn't expose the actual values (which come from GL itself)
-// but provide an API call to crack them back into the actual GL values).
-
-// this may look very similar to Vulkan/Dx12 format (its not but related)
-// these are even more closely related to my gfx_imageformat library...
-typedef enum TinyKTX_FormatEnum {
-	TKTX_UNDEFINED = 0,
-	R4G4_UNORM_PACK8,
-	R4G4B4A4_UNORM_PACK16,
-	B4G4R4A4_UNORM_PACK16,
-	R5G6B5_UNORM_PACK16,
-	B5G6R5_UNORM_PACK16,
-	R5G5B5A1_UNORM_PACK16,
-	B5G5R5A1_UNORM_PACK16,
-	A1R5G5B5_UNORM_PACK16,
-
-	R8_UNORM,
-	R8_SNORM,
-	R8_USCALED,
-	R8_SSCALED,
-	R8_UINT,
-	R8_SINT,
-	R8_SRGB,
-
-	R8G8_UNORM,
-	R8G8_SNORM,
-	R8G8_USCALED,
-	R8G8_SSCALED,
-	R8G8_UINT,
-	R8G8_SINT,
-	R8G8_SRGB,
-
-	R8G8B8_UNORM,
-	R8G8B8_SNORM,
-	R8G8B8_USCALED,
-	R8G8B8_SSCALED,
-	R8G8B8_UINT,
-	R8G8B8_SINT,
-	R8G8B8_SRGB,
-	B8G8R8_UNORM,
-	B8G8R8_SNORM,
-	B8G8R8_USCALED,
-	B8G8R8_SSCALED,
-	B8G8R8_UINT,
-	B8G8R8_SINT,
-	B8G8R8_SRGB,
-
-	R8G8B8A8_UNORM,
-	R8G8B8A8_SNORM,
-	R8G8B8A8_USCALED,
-	R8G8B8A8_SSCALED,
-	R8G8B8A8_UINT,
-	R8G8B8A8_SINT,
-	R8G8B8A8_SRGB,
-	B8G8R8A8_UNORM,
-	B8G8R8A8_SNORM,
-	B8G8R8A8_USCALED,
-	B8G8R8A8_SSCALED,
-	B8G8R8A8_UINT,
-	B8G8R8A8_SINT,
-	B8G8R8A8_SRGB,
-
-	A8B8G8R8_UNORM_PACK32,
-	A8B8G8R8_SNORM_PACK32,
-	A8B8G8R8_USCALED_PACK32,
-	A8B8G8R8_SSCALED_PACK32,
-	A8B8G8R8_UINT_PACK32,
-	A8B8G8R8_SINT_PACK32,
-	A8B8G8R8_SRGB_PACK32,
-
-	E5B9G9R9_UFLOAT_PACK32,
-	A2R10G10B10_UNORM_PACK32,
-	A2R10G10B10_USCALED_PACK32,
-	A2R10G10B10_UINT_PACK32,
-	A2B10G10R10_UNORM_PACK32,
-	A2B10G10R10_USCALED_PACK32,
-	A2B10G10R10_UINT_PACK32,
-	B10G11R11_UFLOAT_PACK32,
-
-	R16_UNORM,
-	R16_SNORM,
-	R16_USCALED,
-	R16_SSCALED,
-	R16_UINT,
-	R16_SINT,
-	R16_SFLOAT,
-	R16G16_UNORM,
-	R16G16_SNORM,
-	R16G16_USCALED,
-	R16G16_SSCALED,
-	R16G16_UINT,
-	R16G16_SINT,
-	R16G16_SFLOAT,
-	R16G16B16_UNORM,
-	R16G16B16_SNORM,
-	R16G16B16_USCALED,
-	R16G16B16_SSCALED,
-	R16G16B16_UINT,
-	R16G16B16_SINT,
-	R16G16B16_SFLOAT,
-	R16G16B16A16_UNORM,
-	R16G16B16A16_SNORM,
-	R16G16B16A16_USCALED,
-	R16G16B16A16_SSCALED,
-	R16G16B16A16_UINT,
-	R16G16B16A16_SINT,
-	R16G16B16A16_SFLOAT,
-	R32_UINT,
-	R32_SINT,
-	R32_SFLOAT,
-	R32G32_UINT,
-	R32G32_SINT,
-	R32G32_SFLOAT,
-	R32G32B32_UINT,
-	R32G32B32_SINT,
-	R32G32B32_SFLOAT,
-	R32G32B32A32_UINT,
-	R32G32B32A32_SINT,
-	R32G32B32A32_SFLOAT,
-
-	BC1_RGB_UNORM_BLOCK,
-	BC1_RGB_SRGB_BLOCK,
-	BC1_RGBA_UNORM_BLOCK,
-	BC1_RGBA_SRGB_BLOCK,
-	BC2_UNORM_BLOCK,
-	BC2_SRGB_BLOCK,
-	BC3_UNORM_BLOCK,
-	BC3_SRGB_BLOCK,
-	BC4_UNORM_BLOCK,
-	BC4_SNORM_BLOCK,
-	BC5_UNORM_BLOCK,
-	BC5_SNORM_BLOCK,
-	BC6H_UFLOAT_BLOCK,
-	BC6H_SFLOAT_BLOCK,
-	BC7_UNORM_BLOCK,
-	BC7_SRGB_BLOCK,
-
-	ETC2_R8G8B8_UNORM_BLOCK,
-	ETC2_R8G8B8A1_UNORM_BLOCK,
-	ETC2_R8G8B8A8_UNORM_BLOCK,
-	ETC2_R8G8B8_SRGB_BLOCK,
-	ETC2_R8G8B8A1_SRGB_BLOCK,
-	ETC2_R8G8B8A8_SRGB_BLOCK,
-	EAC_R11_UNORM_BLOCK,
-	EAC_R11G11_UNORM_BLOCK,
-	EAC_R11_SNORM_BLOCK,
-	EAC_R11G11_SNORM_BLOCK,
-
-	PVR_2BPP_BLOCK,
-	PVR_2BPPA_BLOCK,
-	PVR_4BPP_BLOCK,
-	PVR_4BPPA_BLOCK,
-	PVR_2BPP_SRGB_BLOCK,
-	PVR_2BPPA_SRGB_BLOCK,
-	PVR_4BPP_SRGB_BLOCK,
-	PVR_4BPPA_SRGB_BLOCK,
-
-	ASTC_4x4_UNORM_BLOCK,
-	ASTC_4x4_SRGB_BLOCK,
-	ASTC_5x4_UNORM_BLOCK,
-	ASTC_5x4_SRGB_BLOCK,
-	ASTC_5x5_UNORM_BLOCK,
-	ASTC_5x5_SRGB_BLOCK,
-	ASTC_6x5_UNORM_BLOCK,
-	ASTC_6x5_SRGB_BLOCK,
-	ASTC_6x6_UNORM_BLOCK,
-	ASTC_6x6_SRGB_BLOCK,
-	ASTC_8x5_UNORM_BLOCK,
-	ASTC_8x5_SRGB_BLOCK,
-	ASTC_8x6_UNORM_BLOCK,
-	ASTC_8x6_SRGB_BLOCK,
-	ASTC_8x8_UNORM_BLOCK,
-	ASTC_8x8_SRGB_BLOCK,
-	ASTC_10x5_UNORM_BLOCK,
-	ASTC_10x5_SRGB_BLOCK,
-	ASTC_10x6_UNORM_BLOCK,
-	ASTC_10x6_SRGB_BLOCK,
-	ASTC_10x8_UNORM_BLOCK,
-	ASTC_10x8_SRGB_BLOCK,
-	ASTC_10x10_UNORM_BLOCK,
-	ASTC_10x10_SRGB_BLOCK,
-	ASTC_12x10_UNORM_BLOCK,
-	ASTC_12x10_SRGB_BLOCK,
-	ASTC_12x12_UNORM_BLOCK,
-	ASTC_12x12_SRGB_BLOCK,
-
-} TinyKTX_FormatEnum;
-
-typedef uint32_t TinyKTX_Format;
-
 // GL types
 #define TINYKTX_GL_TYPE_COMPRESSED                      0x0
 #define TINYKTX_GL_TYPE_BYTE                            0x1400
@@ -240,6 +44,7 @@ typedef uint32_t TinyKTX_Format;
 #define TINYKTX_GL_FORMAT_LUMINANCE                        0x1909
 #define TINYKTX_GL_FORMAT_LUMINANCE_ALPHA                  0x190A
 #define TINYKTX_GL_FORMAT_ABGR                            0x8000
+#define TINYKTX_GL_FORMAT_INTENSITY                        0x8049
 #define TINYKTX_GL_FORMAT_BGR                              0x80E0
 #define TINYKTX_GL_FORMAT_BGRA                            0x80E1
 #define TINYKTX_GL_FORMAT_RG                              0x8227
@@ -275,7 +80,6 @@ typedef uint32_t TinyKTX_Format;
 #define TINYKTX_GL_INTFORMAT_LUMINANCE12_ALPHA4              0x8046
 #define TINYKTX_GL_INTFORMAT_LUMINANCE12_ALPHA12              0x8047
 #define TINYKTX_GL_INTFORMAT_LUMINANCE16_ALPHA16              0x8048
-#define TINYKTX_GL_INTFORMAT_INTENSITY                        0x8049
 #define TINYKTX_GL_INTFORMAT_INTENSITY4                      0x804A
 #define TINYKTX_GL_INTFORMAT_INTENSITY8                      0x804B
 #define TINYKTX_GL_INTFORMAT_INTENSITY12                      0x804C
@@ -283,7 +87,7 @@ typedef uint32_t TinyKTX_Format;
 #define TINYKTX_GL_INTFORMAT_RGB2                            0x804E
 #define TINYKTX_GL_INTFORMAT_RGB4                            0x804F
 #define TINYKTX_GL_INTFORMAT_RGB5                            0x8050
-#define TINYKTX_GL_INTFORMAT_RGB8                            0x8051
+#define TINYKTX_GL_INTFORMAT_RGB8                              0x8051
 #define TINYKTX_GL_INTFORMAT_RGB10                            0x8052
 #define TINYKTX_GL_INTFORMAT_RGB12                            0x8053
 #define TINYKTX_GL_INTFORMAT_RGB16                            0x8054
@@ -314,6 +118,17 @@ typedef uint32_t TinyKTX_Format;
 #define TINYKTX_GL_INTFORMAT_RG16UI                          0x823A
 #define TINYKTX_GL_INTFORMAT_RG32I                            0x823B
 #define TINYKTX_GL_INTFORMAT_RG32UI                          0x823C
+#define TINYKTX_GL_INTFORMAT_RGBA32F                          0x8814
+#define TINYKTX_GL_INTFORMAT_RGB32F                          0x8815
+#define TINYKTX_GL_INTFORMAT_RGBA16F                          0x881A
+#define TINYKTX_GL_INTFORMAT_RGB16F                          0x881B
+#define TINYKTX_GL_INTFORMAT_R11F_G11F_B10F                  0x8C3A
+#define TINYKTX_GL_INTFORMAT_UNSIGNED_INT_10F_11F_11F_REV      0x8C3B
+#define TINYKTX_GL_INTFORMAT_RGB9_E5                          0x8C3D
+#define TINYKTX_GL_INTFORMAT_SRGB8                            0x8C41
+#define TINYKTX_GL_INTFORMAT_SRGB8_ALPHA8                      0x8C43
+#define TINYKTX_GL_INTFORMAT_SLUMINANCE8_ALPHA8              0x8C45
+#define TINYKTX_GL_INTFORMAT_SLUMINANCE8                      0x8C47
 #define TINYKTX_GL_INTFORMAT_RGB565                          0x8D62
 #define TINYKTX_GL_INTFORMAT_RGBA32UI                        0x8D70
 #define TINYKTX_GL_INTFORMAT_RGB32UI                          0x8D71
@@ -344,39 +159,6 @@ typedef uint32_t TinyKTX_Format;
 #define TINYKTX_GL_INTFORMAT_LUMINANCE16_SNORM                0x9019
 #define TINYKTX_GL_INTFORMAT_LUMINANCE16_ALPHA16_SNORM        0x901A
 #define TINYKTX_GL_INTFORMAT_INTENSITY16_SNORM                0x901B
-#define TINYKTX_GL_INTFORMAT_ALPHA4                          0x803B
-#define TINYKTX_GL_INTFORMAT_ALPHA8                          0x803C
-#define TINYKTX_GL_INTFORMAT_ALPHA12                          0x803D
-#define TINYKTX_GL_INTFORMAT_ALPHA16                          0x803E
-#define TINYKTX_GL_INTFORMAT_LUMINANCE4                      0x803F
-#define TINYKTX_GL_INTFORMAT_LUMINANCE8                      0x8040
-#define TINYKTX_GL_INTFORMAT_LUMINANCE12                      0x8041
-#define TINYKTX_GL_INTFORMAT_LUMINANCE16                      0x8042
-#define TINYKTX_GL_INTFORMAT_LUMINANCE4_ALPHA4                0x8043
-#define TINYKTX_GL_INTFORMAT_LUMINANCE6_ALPHA2                0x8044
-#define TINYKTX_GL_INTFORMAT_LUMINANCE8_ALPHA8                0x8045
-#define TINYKTX_GL_INTFORMAT_LUMINANCE12_ALPHA4              0x8046
-#define TINYKTX_GL_INTFORMAT_LUMINANCE12_ALPHA12              0x8047
-#define TINYKTX_GL_INTFORMAT_LUMINANCE16_ALPHA16              0x8048
-#define TINYKTX_GL_INTFORMAT_INTENSITY4                      0x804A
-#define TINYKTX_GL_INTFORMAT_INTENSITY8                      0x804B
-#define TINYKTX_GL_INTFORMAT_INTENSITY12                      0x804C
-#define TINYKTX_GL_INTFORMAT_INTENSITY16                      0x804D
-#define TINYKTX_GL_INTFORMAT_RGB8                              0x8051
-#define TINYKTX_GL_INTFORMAT_RGBA8                            0x8058
-#define TINYKTX_GL_INTFORMAT_R16                              0x822A
-#define TINYKTX_GL_INTFORMAT_RG16                              0x822C
-#define TINYKTX_GL_INTFORMAT_RGBA32F                          0x8814
-#define TINYKTX_GL_INTFORMAT_RGB32F                          0x8815
-#define TINYKTX_GL_INTFORMAT_RGBA16F                          0x881A
-#define TINYKTX_GL_INTFORMAT_RGB16F                          0x881B
-#define TINYKTX_GL_INTFORMAT_R11F_G11F_B10F                  0x8C3A
-#define TINYKTX_GL_INTFORMAT_UNSIGNED_INT_10F_11F_11F_REV      0x8C3B
-#define TINYKTX_GL_INTFORMAT_RGB9_E5                          0x8C3D
-#define TINYKTX_GL_INTFORMAT_SRGB8                            0x8C41
-#define TINYKTX_GL_INTFORMAT_SRGB8_ALPHA8                      0x8C43
-#define TINYKTX_GL_INTFORMAT_SLUMINANCE8_ALPHA8              0x8C45
-#define TINYKTX_GL_INTFORMAT_SLUMINANCE8                      0x8C47
 
 #define TINYKTX_GL_PALETTE4_RGB8_OES              0x8B90
 #define TINYKTX_GL_PALETTE4_RGBA8_OES             0x8B91
@@ -471,6 +253,176 @@ typedef uint32_t TinyKTX_Format;
 #ifdef __cplusplus
 extern "C" {
 #endif
+// ktx is based on GL (slightly confusing imho) texture format system
+// there is format, internal format, type etc.
+
+// we try and expose a more dx12/vulkan/metal style of format
+// but obviously still need to GL data so bare with me.
+// a TinyKTX_Format is the equivilent to GL/KTX Format and Type
+// the API doesn't expose the actual values (which come from GL itself)
+// but provide an API call to crack them back into the actual GL values).
+
+// this may look very similar to Vulkan/Dx12 format (its not but related)
+// these are even more closely related to my gfx_imageformat library...
+
+typedef enum TinyKtx_Format {
+	TKTX_UNDEFINED = 0,
+	TKTX_R4G4_UNORM_PACK8,
+	TKTX_R4G4B4A4_UNORM_PACK16,
+	TKTX_B4G4R4A4_UNORM_PACK16,
+	TKTX_R5G6B5_UNORM_PACK16,
+	TKTX_B5G6R5_UNORM_PACK16,
+	TKTX_R5G5B5A1_UNORM_PACK16,
+	TKTX_B5G5R5A1_UNORM_PACK16,
+	TKTX_A1R5G5B5_UNORM_PACK16,
+
+	TKTX_R8_UNORM,
+	TKTX_R8_SNORM,
+	TKTX_R8_UINT,
+	TKTX_R8_SINT,
+	TKTX_R8_SRGB,
+
+	TKTX_R8G8_UNORM,
+	TKTX_R8G8_SNORM,
+	TKTX_R8G8_UINT,
+	TKTX_R8G8_SINT,
+	TKTX_R8G8_SRGB,
+
+	TKTX_R8G8B8_UNORM,
+	TKTX_R8G8B8_SNORM,
+	TKTX_R8G8B8_UINT,
+	TKTX_R8G8B8_SINT,
+	TKTX_R8G8B8_SRGB,
+	TKTX_B8G8R8_UNORM,
+	TKTX_B8G8R8_SNORM,
+	TKTX_B8G8R8_UINT,
+	TKTX_B8G8R8_SINT,
+	TKTX_B8G8R8_SRGB,
+
+	TKTX_R8G8B8A8_UNORM,
+	TKTX_R8G8B8A8_SNORM,
+	TKTX_R8G8B8A8_UINT,
+	TKTX_R8G8B8A8_SINT,
+	TKTX_R8G8B8A8_SRGB,
+	TKTX_B8G8R8A8_UNORM,
+	TKTX_B8G8R8A8_SNORM,
+	TKTX_B8G8R8A8_UINT,
+	TKTX_B8G8R8A8_SINT,
+	TKTX_B8G8R8A8_SRGB,
+
+	TKTX_A8B8G8R8_UNORM_PACK32,
+	TKTX_A8B8G8R8_SNORM_PACK32,
+	TKTX_A8B8G8R8_UINT_PACK32,
+	TKTX_A8B8G8R8_SINT_PACK32,
+	TKTX_A8B8G8R8_SRGB_PACK32,
+
+	TKTX_E5B9G9R9_UFLOAT_PACK32,
+	TKTX_A2R10G10B10_UNORM_PACK32,
+	TKTX_A2R10G10B10_UINT_PACK32,
+	TKTX_A2B10G10R10_UNORM_PACK32,
+	TKTX_A2B10G10R10_UINT_PACK32,
+	TKTX_B10G11R11_UFLOAT_PACK32,
+
+	TKTX_R16_UNORM,
+	TKTX_R16_SNORM,
+	TKTX_R16_UINT,
+	TKTX_R16_SINT,
+	TKTX_R16_SFLOAT,
+	TKTX_R16G16_UNORM,
+	TKTX_R16G16_SNORM,
+	TKTX_R16G16_UINT,
+	TKTX_R16G16_SINT,
+	TKTX_R16G16_SFLOAT,
+	TKTX_R16G16B16_UNORM,
+	TKTX_R16G16B16_SNORM,
+	TKTX_R16G16B16_UINT,
+	TKTX_R16G16B16_SINT,
+	TKTX_R16G16B16_SFLOAT,
+	TKTX_R16G16B16A16_UNORM,
+	TKTX_R16G16B16A16_SNORM,
+	TKTX_R16G16B16A16_UINT,
+	TKTX_R16G16B16A16_SINT,
+	TKTX_R16G16B16A16_SFLOAT,
+	TKTX_R32_UINT,
+	TKTX_R32_SINT,
+	TKTX_R32_SFLOAT,
+	TKTX_R32G32_UINT,
+	TKTX_R32G32_SINT,
+	TKTX_R32G32_SFLOAT,
+	TKTX_R32G32B32_UINT,
+	TKTX_R32G32B32_SINT,
+	TKTX_R32G32B32_SFLOAT,
+	TKTX_R32G32B32A32_UINT,
+	TKTX_R32G32B32A32_SINT,
+	TKTX_R32G32B32A32_SFLOAT,
+
+	TKTX_BC1_RGB_UNORM_BLOCK,
+	TKTX_BC1_RGB_SRGB_BLOCK,
+	TKTX_BC1_RGBA_UNORM_BLOCK,
+	TKTX_BC1_RGBA_SRGB_BLOCK,
+	TKTX_BC2_UNORM_BLOCK,
+	TKTX_BC2_SRGB_BLOCK,
+	TKTX_BC3_UNORM_BLOCK,
+	TKTX_BC3_SRGB_BLOCK,
+	TKTX_BC4_UNORM_BLOCK,
+	TKTX_BC4_SNORM_BLOCK,
+	TKTX_BC5_UNORM_BLOCK,
+	TKTX_BC5_SNORM_BLOCK,
+	TKTX_BC6H_UFLOAT_BLOCK,
+	TKTX_BC6H_SFLOAT_BLOCK,
+	TKTX_BC7_UNORM_BLOCK,
+	TKTX_BC7_SRGB_BLOCK,
+
+	TKTX_ETC2_R8G8B8_UNORM_BLOCK,
+	TKTX_ETC2_R8G8B8A1_UNORM_BLOCK,
+	TKTX_ETC2_R8G8B8A8_UNORM_BLOCK,
+	TKTX_ETC2_R8G8B8_SRGB_BLOCK,
+	TKTX_ETC2_R8G8B8A1_SRGB_BLOCK,
+	TKTX_ETC2_R8G8B8A8_SRGB_BLOCK,
+	TKTX_EAC_R11_UNORM_BLOCK,
+	TKTX_EAC_R11G11_UNORM_BLOCK,
+	TKTX_EAC_R11_SNORM_BLOCK,
+	TKTX_EAC_R11G11_SNORM_BLOCK,
+
+	TKTX_PVR_2BPP_BLOCK,
+	TKTX_PVR_2BPPA_BLOCK,
+	TKTX_PVR_4BPP_BLOCK,
+	TKTX_PVR_4BPPA_BLOCK,
+	TKTX_PVR_2BPP_SRGB_BLOCK,
+	TKTX_PVR_2BPPA_SRGB_BLOCK,
+	TKTX_PVR_4BPP_SRGB_BLOCK,
+	TKTX_PVR_4BPPA_SRGB_BLOCK,
+
+	TKTX_ASTC_4x4_UNORM_BLOCK,
+	TKTX_ASTC_4x4_SRGB_BLOCK,
+	TKTX_ASTC_5x4_UNORM_BLOCK,
+	TKTX_ASTC_5x4_SRGB_BLOCK,
+	TKTX_ASTC_5x5_UNORM_BLOCK,
+	TKTX_ASTC_5x5_SRGB_BLOCK,
+	TKTX_ASTC_6x5_UNORM_BLOCK,
+	TKTX_ASTC_6x5_SRGB_BLOCK,
+	TKTX_ASTC_6x6_UNORM_BLOCK,
+	TKTX_ASTC_6x6_SRGB_BLOCK,
+	TKTX_ASTC_8x5_UNORM_BLOCK,
+	TKTX_ASTC_8x5_SRGB_BLOCK,
+	TKTX_ASTC_8x6_UNORM_BLOCK,
+	TKTX_ASTC_8x6_SRGB_BLOCK,
+	TKTX_ASTC_8x8_UNORM_BLOCK,
+	TKTX_ASTC_8x8_SRGB_BLOCK,
+	TKTX_ASTC_10x5_UNORM_BLOCK,
+	TKTX_ASTC_10x5_SRGB_BLOCK,
+	TKTX_ASTC_10x6_UNORM_BLOCK,
+	TKTX_ASTC_10x6_SRGB_BLOCK,
+	TKTX_ASTC_10x8_UNORM_BLOCK,
+	TKTX_ASTC_10x8_SRGB_BLOCK,
+	TKTX_ASTC_10x10_UNORM_BLOCK,
+	TKTX_ASTC_10x10_SRGB_BLOCK,
+	TKTX_ASTC_12x10_UNORM_BLOCK,
+	TKTX_ASTC_12x10_SRGB_BLOCK,
+	TKTX_ASTC_12x12_UNORM_BLOCK,
+	TKTX_ASTC_12x12_SRGB_BLOCK,
+
+} TinyKtx_Format;
 
 typedef struct TinyKtx_Context *TinyKtx_ContextHandle;
 
@@ -509,13 +461,16 @@ bool TinyKtx_Is3D(TinyKtx_ContextHandle handle);
 bool TinyKtx_IsCubemap(TinyKtx_ContextHandle handle);
 bool TinyKtx_IsArray(TinyKtx_ContextHandle handle);
 
+bool TinyKtx_Dimensions(TinyKtx_ContextHandle handle, uint32_t* width, uint32_t* height, uint32_t* depth, uint32_t* slices);
 uint32_t TinyKtx_Width(TinyKtx_ContextHandle handle);
 uint32_t TinyKtx_Height(TinyKtx_ContextHandle handle);
 uint32_t TinyKtx_Depth(TinyKtx_ContextHandle handle);
 uint32_t TinyKtx_ArraySlices(TinyKtx_ContextHandle handle);
-TinyKTX_Format TinyKtx_Format(TinyKtx_ContextHandle handle);
+TinyKtx_Format TinyKtx_GetFormat(TinyKtx_ContextHandle handle);
 
-bool TinyKtx_CrackFormatToGL(TinyKTX_FormatEnum format, uint32_t *glformat, uint32_t *gltype, uint32_t *glinternalformat);
+bool TinyKtx_GetFormatGL(TinyKtx_ContextHandle handle, uint32_t *glformat, uint32_t *gltype, uint32_t *glinternalformat, uint32_t* typesize, uint32_t* glbaseinternalformat);
+
+bool TinyKtx_CrackFormatToGL(TinyKtx_Format format, uint32_t *glformat, uint32_t *gltype, uint32_t *glinternalformat, uint32_t* typesize);
 
 bool TinyKtx_NeedsGenerationOfMipmaps(TinyKtx_ContextHandle handle);
 bool TinyKtx_NeedsEndianCorrecting(TinyKtx_ContextHandle handle);
@@ -542,7 +497,7 @@ bool TinyKtx_WriteImage(TinyKtx_WriteCallbacks const *callbacks,
 												uint32_t depth,
 												uint32_t slices,
 												uint32_t mipmaplevels,
-												TinyKTX_FormatEnum format,
+												TinyKtx_Format format,
 												bool cubemap,
 												uint32_t const *mipmapsizes,
 												void const **mipmaps);
