@@ -860,8 +860,6 @@ bool TinyKtx_WriteImage(TinyKtx_WriteCallbacks const *callbacks,
 	if (TinyKtx_CrackFormatToGL(format, &glformat, &gltype, &glinternalFormat, &gltypeSize) == false)
 		return false;
 
-	uint32_t glbaseFormat;
-
 	return TinyKtx_WriteImageGL(callbacks,
 															user,
 															width,
