@@ -1,0 +1,6 @@
+# top-most EditorConfig file
+root = true
+
+[*.{c,cpp,h,hpp}]
+indent_style = tab
+indent_size = 2

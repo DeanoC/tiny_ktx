@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.13 FATAL_ERROR)
 get_directory_property(hasParent PARENT_DIRECTORY)
 if(NOT hasParent)
-	#if building standalone and not specified build tests
-	option(BUILD_TESTS "Whether to build tests" ON)
 	set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/out_libs)
 	set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/out_bin)
 	set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/out_bin)
@@ -32,18 +30,4 @@ set(Deps
 		)
 ADD_LIB(${LibName} "${Interface}" "${Src}" "${Deps}")
 
-set( Tests
-		runner.cpp
-		test_tinyktx.cpp
-		)
-set( TestDeps
-		al2o3_platform
-		al2o3_memory
-		al2o3_cmath
-		al2o3_stb
-		al2o3_vfile
-		utils_misccpp
-		utils_simple_logmanager
-		al2o3_catch2 )
-ADD_LIB_TESTS(${LibName} "${Interface}" "${Tests}" "${TestDeps}")
 
