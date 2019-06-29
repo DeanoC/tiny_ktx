@@ -32,6 +32,8 @@ typedef struct TinyKtx_Context {
 	TinyKtx_Callbacks callbacks;
 	void *user;
 	uint64_t headerPos;
+	uint64_t firstImagePos;
+
 	TinyKtx_Header header;
 	TinyKtx_KeyValuePair const *keyData;
 	bool headerValid;
@@ -162,8 +164,7 @@ bool TinyKtx_ReadHeader(TinyKtx_ContextHandle handle) {
 	ctx->keyData = (TinyKtx_KeyValuePair const *) ctx->callbacks.alloc(ctx->user, ctx->header.bytesOfKeyValueData);
 	ctx->callbacks.read(ctx->user, (void *) ctx->keyData, ctx->header.bytesOfKeyValueData);
 
-	// read mipmap level 0 size now as
-	ctx->callbacks.read(ctx->user, ctx->mipMapSizes, sizeof(uint32_t));
+	ctx->firstImagePos = ctx->callbacks.tell(ctx->user);
 
 	ctx->headerValid = true;
 	return true;
@@ -191,7 +192,7 @@ bool TinyKtx_GetValue(TinyKtx_ContextHandle handle, char const *key, void const 
 			*value = (void const *) (kvp + sl);
 			return true;
 		}
-		curKey = curKey + ((curKey->size + 3u) & ~4u);
+		curKey = curKey + ((curKey->size + 3u) & ~3u);
 	}
 	return false;
 }
@@ -778,7 +779,7 @@ static uint32_t imageSize(TinyKtx_ContextHandle handle, uint32_t mipmaplevel, bo
 	if (ctx->mipMapSizes[mipmaplevel] != 0)
 		return ctx->mipMapSizes[mipmaplevel];
 
-	uint64_t currentOffset = ctx->headerPos + sizeof(TinyKtx_Header) + ctx->header.bytesOfKeyValueData;
+	uint64_t currentOffset = ctx->firstImagePos;
 	for (uint32_t i = 0; i <= mipmaplevel; ++i) {
 		uint32_t size;
 		// if we have already read this mipmaps size use it
@@ -790,15 +791,19 @@ static uint32_t imageSize(TinyKtx_ContextHandle handle, uint32_t mipmaplevel, bo
 		} else {
 			// otherwise seek and read it
 			ctx->callbacks.seek(ctx->user, currentOffset);
-			ctx->callbacks.read(ctx->user, &size, sizeof(uint32_t));
+			size_t readchk = ctx->callbacks.read(ctx->user, &size, sizeof(uint32_t));
+			if(readchk != 4) {
+				ctx->callbacks.error(ctx->user, "Reading image size error");
+				return 0;
+			}
 
 			if (ctx->header.numberOfFaces == 6 && ctx->header.numberOfArrayElements == 0) {
-				size = ((size + 3u) & ~4u) * 6; // face padding and 6 faces
+				size = ((size + 3u) & ~3u) * 6; // face padding and 6 faces
 			}
 
 			ctx->mipMapSizes[i] = size;
 		}
-		currentOffset += (size + 3u) & ~4u; // mip padding
+		currentOffset += (size + sizeof(uint32_t) + 3u) & ~3u; // size + mip padding
 	}
 
 	return ctx->mipMapSizes[mipmaplevel];
@@ -920,7 +925,7 @@ bool TinyKtx_WriteImageGL(TinyKtx_WriteCallbacks const *callbacks,
 	for (uint32_t i = 0u; i < mipmaplevels; ++i) {
 		callbacks->write(user, mipmapsizes + i, sizeof(uint32_t));
 		callbacks->write(user, mipmaps[i], mipmapsizes[i]);
-		callbacks->write(user, padding, ((mipmapsizes[i] + 3u) & ~4u) - mipmapsizes[i]);
+		callbacks->write(user, padding, ((mipmapsizes[i] + 3u) & ~3u) - mipmapsizes[i]);
 	}
 
 	return true;
