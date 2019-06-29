@@ -636,6 +636,7 @@ void TinyKtx_DestroyContext(TinyKtx_ContextHandle handle) {
 	TinyKtx_Context *ctx = (TinyKtx_Context *) handle;
 	if (ctx == NULL)
 		return;
+	TinyKtx_Reset(handle);
 	ctx->callbacks.free(ctx->user, ctx);
 }
 
