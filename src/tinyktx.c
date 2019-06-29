@@ -1,4 +1,6 @@
+#define TINYKTX_IMPLEMENTATION
 #include "tiny_ktx/tinyktx.h"
+<<<<<<< HEAD
 #include <string.h>
 
 #ifdef __cplusplus
@@ -2214,3 +2216,5 @@ static inline void vkGetFormatSize( const VkFormat format, VkFormatSize * pForma
 	}
 }
 #endif
+=======
+>>>>>>> single header tinyktx
