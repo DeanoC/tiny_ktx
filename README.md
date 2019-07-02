@@ -222,7 +222,8 @@ AL2O3_EXTERN_C bool Image_SaveKTX(Image_ImageHeader *image, VFile_Handle handle)
 
 ## Tests
 Testing is done using my Taylor scriptable content processor.
-TODO provide link
+[taylor_imagetest - script and data](https://github.com/DeanoC/taylor_imagetests)
+[taylor - app that runs the test script) ](https://github.com/DeanoC/taylor)
 
 ## TODO
 Lots of validation/tests
