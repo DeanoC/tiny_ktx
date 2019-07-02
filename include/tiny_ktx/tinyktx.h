@@ -1061,7 +1061,7 @@ void const *TinyKtx_ImageRawData(TinyKtx_ContextHandle handle, uint32_t mipmaple
                                     return true;
 #define FTC(fmt, intfmt) *glformat = TINYKTX_GL_FORMAT_##fmt; \
                                     *gltype = TINYKTX_GL_TYPE_COMPRESSED; \
-                                    *glinternalformat = TINYKTX_GL_OMPRESSED_##intfmt; \
+                                    *glinternalformat = TINYKTX_GL_COMPRESSED_##intfmt; \
                                     *typesize = 1; \
                                     return true;
 
@@ -1543,8 +1543,6 @@ bool TinyKtx_WriteImage(TinyKtx_WriteCallbacks const *callbacks,
 	uint32_t gltypeSize;
 	if (TinyKtx_CrackFormatToGL(format, &glformat, &gltype, &glinternalFormat, &gltypeSize) == false)
 		return false;
-
-	uint32_t glbaseFormat;
 
 	return TinyKtx_WriteImageGL(callbacks,
 															user,
