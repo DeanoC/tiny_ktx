@@ -222,7 +222,9 @@ AL2O3_EXTERN_C bool Image_SaveKTX(Image_ImageHeader *image, VFile_Handle handle)
 
 ## Tests
 Testing is done using my Taylor scriptable content processor.
+
 [taylor_imagetest - script and data](https://github.com/DeanoC/taylor_imagetests)
+
 [taylor - app that runs the test script) ](https://github.com/DeanoC/taylor)
 
 ## TODO
@@ -243,6 +245,6 @@ If you want higher level of tiny_ktx or how tiny_ktx is used see the links below
 
 The snippets above are from gfx_imageio
 
-[gfx_imageio - higher level import/export image using tiny_ktx (and other formats) ](https://github.com/DeanoC/gfx_imageio)
+[gfx_imageio - higher level import/export image using tiny_ktx (and other formats)](https://github.com/DeanoC/gfx_imageio)
 
-[taylor - lua scripted image processer using gfx_imageio) ](https://github.com/DeanoC/taylor)
+[taylor - lua scripted image processer using gfx_imageio](https://github.com/DeanoC/taylor)
