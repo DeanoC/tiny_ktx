@@ -980,7 +980,7 @@ static uint32_t imageSize(TinyKtx_ContextHandle handle, uint32_t mipmaplevel, bo
 		ctx->callbacks.error(ctx->user, "Invalid mipmap level");
 		return 0;
 	}
-	if (ctx->mipMapSizes[mipmaplevel] != 0)
+	if (!seekLast && ctx->mipMapSizes[mipmaplevel] != 0)
 		return ctx->mipMapSizes[mipmaplevel];
 
 	uint64_t currentOffset = ctx->firstImagePos;
