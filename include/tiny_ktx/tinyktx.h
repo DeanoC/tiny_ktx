@@ -18,21 +18,6 @@
 #include <string.h> 	// for memcpy
 #endif
 
-// if you don't want the helper format function or already have GL defines
-// comment these two lines out
-//#define TINYKTX_WANT_TINYKTX_FORMAT 0
-//#define TINYKTX_WANT_FAKE_GL_DEFINES 0
-
-
-#ifndef TINYKTX_WANT_TINYKTX_FORMAT
-#define TINYKTX_WANT_TINYKTX_FORMAT 1
-#define TINYKTX_WANT_FAKE_GL_DEFINES 1
-#endif
-
-#ifndef TINYKTX_WANT_FAKE_GL_DEFINES
-#define TINYKTX_WANT_FAKE_GL_DEFINES 1
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -72,7 +57,7 @@ typedef struct TinyKtx_Callbacks {
 TinyKtx_ContextHandle TinyKtx_CreateContext(TinyKtx_Callbacks const *callbacks, void *user);
 void TinyKtx_DestroyContext(TinyKtx_ContextHandle handle);
 
-// reset like you reuse the context for another file (saves an alloc/free cycle)
+// reset lets you reuse the context for another file (saves an alloc/free cycle)
 void TinyKtx_Reset(TinyKtx_ContextHandle handle);
 
 // call this to read the header file should already be at the start of the KTX data
@@ -100,6 +85,10 @@ bool TinyKtx_NeedsEndianCorrecting(TinyKtx_ContextHandle handle);
 
 uint32_t TinyKtx_NumberOfMipmaps(TinyKtx_ContextHandle handle);
 uint32_t TinyKtx_ImageSize(TinyKtx_ContextHandle handle, uint32_t mipmaplevel);
+
+bool TinyKtx_IsMipMapLevelUnpacked(TinyKtx_ContextHandle handle, uint32_t mipmaplevel);
+// this is required to read Unpacked data correctly
+uint32_t TinyKtx_UnpackedRowStride(TinyKtx_ContextHandle handle, uint32_t mipmaplevel);
 
 // data return by ImageRawData is owned by the context. Don't free it!
 void const *TinyKtx_ImageRawData(TinyKtx_ContextHandle handle, uint32_t mipmaplevel);
@@ -130,7 +119,6 @@ bool TinyKtx_WriteImageGL(TinyKtx_WriteCallbacks const *callbacks,
 													uint32_t const *mipmapsizes,
 													void const **mipmaps);
 
-#if TINYKTX_WANT_TINYKTX_FORMAT != 0
 // ktx v1 is based on GL (slightly confusing imho) texture format system
 // there is format, internal format, type etc.
 
@@ -548,9 +536,6 @@ bool TinyKtx_WriteImage(TinyKtx_WriteCallbacks const *callbacks,
 												bool cubemap,
 												uint32_t const *mipmapsizes,
 												void const **mipmaps);
-#endif
-
-#if TINYKTX_WANT_FAKE_GL_DEFINES != 0
 // GL types
 #define TINYKTX_GL_TYPE_COMPRESSED                      0x0
 #define TINYKTX_GL_TYPE_BYTE                            0x1400
@@ -793,8 +778,6 @@ bool TinyKtx_WriteImage(TinyKtx_WriteCallbacks const *callbacks,
 #define TINYKTX_GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x10     		0x93DC
 #define TINYKTX_GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12     		0x93DD
 
-#endif
-
 #ifdef TINYKTX_IMPLEMENTATION
 
 typedef struct TinyKtx_Header {
@@ -977,6 +960,8 @@ void TinyKtx_Reset(TinyKtx_ContextHandle handle) {
 	ctx->user = user;
 
 }
+
+
 #ifdef TINY_KTX_EXPERIMENTAL_KTX2_SUPPORT
 bool TinyKtx_ReadHeaderV2(TinyKtx_ContextHandle handle) {
 	TinyKtx_Context *ctx = (TinyKtx_Context *) handle;
@@ -1350,53 +1335,6 @@ bool TinyKtx_GetFormatGL(TinyKtx_ContextHandle handle, uint32_t *glformat, uint3
 	return true;
 }
 
-bool TinyKtx_WriteImageGL(TinyKtx_WriteCallbacks const *callbacks,
-													void *user,
-													uint32_t width,
-													uint32_t height,
-													uint32_t depth,
-													uint32_t slices,
-													uint32_t mipmaplevels,
-													uint32_t format,
-													uint32_t internalFormat,
-													uint32_t baseFormat,
-													uint32_t type,
-													uint32_t typeSize,
-													bool cubemap,
-													uint32_t const *mipmapsizes,
-													void const **mipmaps) {
-
-	TinyKtx_Header header;
-	memcpy(header.identifier, TinyKtx_fileIdentifier, 12);
-	header.endianness = 0x04030201;
-	header.glFormat = format;
-	header.glInternalFormat = internalFormat;
-	header.glBaseInternalFormat = baseFormat;
-	header.glType = type;
-	header.glTypeSize = typeSize;
-	header.pixelWidth = width;
-	header.pixelHeight = height;
-	header.pixelDepth = depth;
-	header.numberOfArrayElements = slices;
-	header.numberOfFaces = cubemap ? 6 : 1;
-	header.numberOfMipmapLevels = mipmaplevels;
-	// TODO keyvalue pair data
-	header.bytesOfKeyValueData = 0;
-	callbacks->write(user, &header, sizeof(TinyKtx_Header));
-
-	static uint8_t const padding[4] = {0, 0, 0, 0};
-
-	// TODO this might be wrong for non array cubemaps with < 4 bytes per pixel...
-	// cubemap padding needs factoring in.
-	for (uint32_t i = 0u; i < mipmaplevels; ++i) {
-		callbacks->write(user, mipmapsizes + i, sizeof(uint32_t));
-		callbacks->write(user, mipmaps[i], mipmapsizes[i]);
-		callbacks->write(user, padding, ((mipmapsizes[i] + 3u) & ~3u) - mipmapsizes[i]);
-	}
-
-	return true;
-}
-
 #ifdef TINY_KTX_EXPERIMENTAL_KTX2_SUPPORT
 static uint32_t TinyKtx_imageSizeV2(TinyKtx_ContextHandle handle, uint32_t mipmaplevel) {
 	TinyKtx_Context *ctx = (TinyKtx_Context *) handle;
@@ -1445,6 +1383,11 @@ static uint32_t TinyKtx_imageSize(TinyKtx_ContextHandle handle, uint32_t mipmapl
 				ctx->callbacks.error(ctx->user, "Reading image size error");
 				return 0;
 			}
+			// so in the really small print KTX v1 states GL_UNPACK_ALIGNMENT = 4
+			// which PVR Texture Tool and I missed. It means pad to 1, 2, 4, 8
+			// note 3 or 6 bytes are rounded up.
+			// we rely on the loader setting this right, we should handle file with
+			// it not to standard but its really the level up that has to do this
 
 			if (ctx->header.numberOfFaces == 6 && ctx->header.numberOfArrayElements == 0) {
 				size = ((size + 3u) & ~3u) * 6; // face padding and 6 faces
@@ -1597,8 +1540,6 @@ void const *TinyKtx_ImageRawData(TinyKtx_ContextHandle handle, uint32_t mipmaple
 	return ctx->mipmaps[mipmaplevel];
 }
 
-#if TINYKTX_WANT_TINYKTX_FORMAT != 0
-
 #define FT(fmt, type, intfmt, size) *glformat = TINYKTX_GL_FORMAT_##fmt; \
                                     *gltype = TINYKTX_GL_TYPE_##type; \
                                     *glinternalformat = TINYKTX_GL_INTFORMAT_##intfmt; \
@@ -1617,18 +1558,18 @@ bool TinyKtx_CrackFormatToGL(TinyKtx_Format format,
 														 uint32_t *typesize) {
 	switch (format) {
 	case TKTX_R4G4_UNORM_PACK8: break;
-	case TKTX_R4G4B4A4_UNORM_PACK16: FT(RGBA, UNSIGNED_SHORT_4_4_4_4, RGBA4, 1)
-	case TKTX_B4G4R4A4_UNORM_PACK16: FT(BGRA, UNSIGNED_SHORT_4_4_4_4_REV, RGBA4, 1)
-	case TKTX_R5G6B5_UNORM_PACK16: FT(RGB, UNSIGNED_SHORT_5_6_5, RGB565, 1)
-	case TKTX_B5G6R5_UNORM_PACK16: FT(BGR, UNSIGNED_SHORT_5_6_5_REV, RGB565, 1)
-	case TKTX_R5G5B5A1_UNORM_PACK16: FT(RGBA, UNSIGNED_SHORT_5_5_5_1, RGB5_A1, 1)
-	case TKTX_A1R5G5B5_UNORM_PACK16: FT(RGBA, UNSIGNED_SHORT_1_5_5_5_REV, RGB5_A1, 1)
-	case TKTX_B5G5R5A1_UNORM_PACK16: FT(BGRA, UNSIGNED_SHORT_5_5_5_1, RGB5_A1, 1)
+	case TKTX_R4G4B4A4_UNORM_PACK16: FT(RGBA, UNSIGNED_SHORT_4_4_4_4, RGBA4, 2)
+	case TKTX_B4G4R4A4_UNORM_PACK16: FT(BGRA, UNSIGNED_SHORT_4_4_4_4_REV, RGBA4, 2)
+	case TKTX_R5G6B5_UNORM_PACK16: FT(RGB, UNSIGNED_SHORT_5_6_5, RGB565, 2)
+	case TKTX_B5G6R5_UNORM_PACK16: FT(BGR, UNSIGNED_SHORT_5_6_5_REV, RGB565, 2)
+	case TKTX_R5G5B5A1_UNORM_PACK16: FT(RGBA, UNSIGNED_SHORT_5_5_5_1, RGB5_A1, 2)
+	case TKTX_A1R5G5B5_UNORM_PACK16: FT(RGBA, UNSIGNED_SHORT_1_5_5_5_REV, RGB5_A1, 2)
+	case TKTX_B5G5R5A1_UNORM_PACK16: FT(BGRA, UNSIGNED_SHORT_5_5_5_1, RGB5_A1, 2)
 
-	case TKTX_A2R10G10B10_UNORM_PACK32: FT(BGRA, UNSIGNED_INT_2_10_10_10_REV, RGB10_A2, 1)
-	case TKTX_A2R10G10B10_UINT_PACK32: FT(BGRA_INTEGER, UNSIGNED_INT_2_10_10_10_REV, RGB10_A2, 1)
-	case TKTX_A2B10G10R10_UNORM_PACK32: FT(RGBA, UNSIGNED_INT_2_10_10_10_REV, RGB10_A2, 1)
-	case TKTX_A2B10G10R10_UINT_PACK32: FT(RGBA_INTEGER, UNSIGNED_INT_2_10_10_10_REV, RGB10_A2, 1)
+	case TKTX_A2R10G10B10_UNORM_PACK32: FT(BGRA, UNSIGNED_INT_2_10_10_10_REV, RGB10_A2, 4)
+	case TKTX_A2R10G10B10_UINT_PACK32: FT(BGRA_INTEGER, UNSIGNED_INT_2_10_10_10_REV, RGB10_A2, 4)
+	case TKTX_A2B10G10R10_UNORM_PACK32: FT(RGBA, UNSIGNED_INT_2_10_10_10_REV, RGB10_A2, 4)
+	case TKTX_A2B10G10R10_UINT_PACK32: FT(RGBA_INTEGER, UNSIGNED_INT_2_10_10_10_REV, RGB10_A2, 4)
 
 	case TKTX_R8_UNORM: FT(RED, UNSIGNED_BYTE, R8, 1)
 	case TKTX_R8_SNORM: FT(RED, BYTE, R8_SNORM, 1)
@@ -1666,13 +1607,13 @@ bool TinyKtx_CrackFormatToGL(TinyKtx_Format format,
 	case TKTX_B8G8R8A8_SINT: FT(BGRA_INTEGER, BYTE, RGBA8I, 1)
 	case TKTX_B8G8R8A8_SRGB: FT(BGRA, UNSIGNED_BYTE, SRGB8, 1)
 
-	case TKTX_E5B9G9R9_UFLOAT_PACK32: FT(BGR, UNSIGNED_INT_5_9_9_9_REV, RGB9_E5, 1);
+	case TKTX_E5B9G9R9_UFLOAT_PACK32: FT(BGR, UNSIGNED_INT_5_9_9_9_REV, RGB9_E5, 4);
 	case TKTX_A8B8G8R8_UNORM_PACK32: FT(ABGR, UNSIGNED_BYTE, RGBA8, 1)
 	case TKTX_A8B8G8R8_SNORM_PACK32: FT(ABGR, BYTE, RGBA8, 1)
 	case TKTX_A8B8G8R8_UINT_PACK32: FT(ABGR, UNSIGNED_BYTE, RGBA8UI, 1)
 	case TKTX_A8B8G8R8_SINT_PACK32: FT(ABGR, BYTE, RGBA8I, 1)
 	case TKTX_A8B8G8R8_SRGB_PACK32: FT(ABGR, UNSIGNED_BYTE, SRGB8, 1)
-	case TKTX_B10G11R11_UFLOAT_PACK32: FT(BGR, UNSIGNED_INT_10F_11F_11F_REV, R11F_G11F_B10F, 1)
+	case TKTX_B10G11R11_UFLOAT_PACK32: FT(BGR, UNSIGNED_INT_10F_11F_11F_REV, R11F_G11F_B10F, 4)
 
 	case TKTX_R16_UNORM: FT(RED, UNSIGNED_SHORT, R16, 2)
 	case TKTX_R16_SNORM: FT(RED, SHORT, R16_SNORM, 2)
@@ -1862,7 +1803,7 @@ TinyKtx_Format TinyKtx_CrackFormatFromGL(uint32_t const glformat,
 	case TINYKTX_GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x10: return TKTX_ASTC_12x10_SRGB_BLOCK;
 	case TINYKTX_GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12: return TKTX_ASTC_12x12_SRGB_BLOCK;
 
-	// non compressed
+		// non compressed
 	case TINYKTX_GL_INTFORMAT_R8: return TKTX_R8_UNORM;
 	case TINYKTX_GL_INTFORMAT_RG8: return TKTX_R8G8_UNORM;
 	case TINYKTX_GL_INTFORMAT_RGB8: return TKTX_R8G8B8_UNORM;
@@ -2029,7 +1970,7 @@ TinyKtx_Format TinyKtx_CrackFormatFromGL(uint32_t const glformat,
 		}
 		break;
 
-			// can't handle yet
+		// can't handle yet
 	case TINYKTX_GL_INTFORMAT_ALPHA4:
 	case TINYKTX_GL_INTFORMAT_ALPHA12:
 	case TINYKTX_GL_INTFORMAT_LUMINANCE4:
@@ -2058,6 +1999,82 @@ TinyKtx_Format TinyKtx_CrackFormatFromGL(uint32_t const glformat,
 	return TKTX_UNDEFINED;
 }
 
+uint32_t TinyKtx_ElementCountFromGLFormat(uint32_t fmt){
+	switch(fmt) {
+	case TINYKTX_GL_FORMAT_RED:
+	case TINYKTX_GL_FORMAT_GREEN:
+	case TINYKTX_GL_FORMAT_BLUE:
+	case TINYKTX_GL_FORMAT_ALPHA:
+	case TINYKTX_GL_FORMAT_LUMINANCE:
+	case TINYKTX_GL_FORMAT_INTENSITY:
+	case TINYKTX_GL_FORMAT_RED_INTEGER:
+	case TINYKTX_GL_FORMAT_GREEN_INTEGER:
+	case TINYKTX_GL_FORMAT_BLUE_INTEGER:
+	case TINYKTX_GL_FORMAT_ALPHA_INTEGER:
+	case TINYKTX_GL_FORMAT_SLUMINANCE:
+	case TINYKTX_GL_FORMAT_RED_SNORM:
+		return 1;
+
+	case TINYKTX_GL_FORMAT_RG_INTEGER:
+	case TINYKTX_GL_FORMAT_RG:
+	case TINYKTX_GL_FORMAT_LUMINANCE_ALPHA:
+	case TINYKTX_GL_FORMAT_SLUMINANCE_ALPHA:
+	case TINYKTX_GL_FORMAT_RG_SNORM:
+		return 2;
+
+	case TINYKTX_GL_FORMAT_BGR:
+	case TINYKTX_GL_FORMAT_RGB:
+	case TINYKTX_GL_FORMAT_SRGB:
+	case TINYKTX_GL_FORMAT_RGB_INTEGER:
+	case TINYKTX_GL_FORMAT_BGR_INTEGER:
+	case TINYKTX_GL_FORMAT_RGB_SNORM:
+		return 3;
+
+	case TINYKTX_GL_FORMAT_BGRA:
+	case TINYKTX_GL_FORMAT_RGBA:
+	case TINYKTX_GL_FORMAT_ABGR:
+	case TINYKTX_GL_FORMAT_SRGB_ALPHA:
+	case TINYKTX_GL_FORMAT_RGBA_INTEGER:
+	case TINYKTX_GL_FORMAT_BGRA_INTEGER:
+	case TINYKTX_GL_FORMAT_RGBA_SNORM:
+		return 4;
+	}
+
+	return 0;
+}
+bool TinyKtx_ByteDividableFromGLType(uint32_t type){
+	switch(type) {
+	case TINYKTX_GL_TYPE_COMPRESSED:
+	case TINYKTX_GL_TYPE_UNSIGNED_BYTE_3_3_2:
+	case TINYKTX_GL_TYPE_UNSIGNED_SHORT_4_4_4_4:
+	case TINYKTX_GL_TYPE_UNSIGNED_SHORT_5_5_5_1:
+	case TINYKTX_GL_TYPE_UNSIGNED_INT_8_8_8_8:
+	case TINYKTX_GL_TYPE_UNSIGNED_INT_10_10_10_2:
+	case TINYKTX_GL_TYPE_UNSIGNED_BYTE_2_3_3_REV:
+	case TINYKTX_GL_TYPE_UNSIGNED_SHORT_5_6_5:
+	case TINYKTX_GL_TYPE_UNSIGNED_SHORT_5_6_5_REV:
+	case TINYKTX_GL_TYPE_UNSIGNED_SHORT_4_4_4_4_REV:
+	case TINYKTX_GL_TYPE_UNSIGNED_SHORT_1_5_5_5_REV:
+	case TINYKTX_GL_TYPE_UNSIGNED_INT_8_8_8_8_REV:
+	case TINYKTX_GL_TYPE_UNSIGNED_INT_2_10_10_10_REV:
+	case TINYKTX_GL_TYPE_UNSIGNED_INT_24_8:
+	case TINYKTX_GL_TYPE_UNSIGNED_INT_5_9_9_9_REV:
+	case TINYKTX_GL_TYPE_UNSIGNED_INT_10F_11F_11F_REV:
+	case TINYKTX_GL_TYPE_FLOAT_32_UNSIGNED_INT_24_8_REV:
+		return false;
+	case TINYKTX_GL_TYPE_BYTE:
+	case TINYKTX_GL_TYPE_UNSIGNED_BYTE:
+	case TINYKTX_GL_TYPE_SHORT:
+	case TINYKTX_GL_TYPE_UNSIGNED_SHORT:
+	case TINYKTX_GL_TYPE_INT:
+	case TINYKTX_GL_TYPE_UNSIGNED_INT:
+	case TINYKTX_GL_TYPE_FLOAT:
+	case TINYKTX_GL_TYPE_DOUBLE:
+	case TINYKTX_GL_TYPE_HALF_FLOAT:
+		return true;
+	}
+	return false;
+}
 TinyKtx_Format TinyKtx_GetFormat(TinyKtx_ContextHandle handle) {
 	uint32_t glformat;
 	uint32_t gltype;
@@ -2084,6 +2101,197 @@ TinyKtx_Format TinyKtx_GetFormat(TinyKtx_ContextHandle handle) {
 		return TKTX_UNDEFINED;
 
 	return TinyKtx_CrackFormatFromGL(glformat, gltype, glinternalformat, typesize);
+}
+static uint32_t TinyKtx_MipMapReduce(uint32_t value, uint32_t mipmaplevel) {
+
+	// handle 0 being passed in
+	if(value <= 1) return 1;
+
+	// there are better ways of doing this (log2 etc.) but this doesn't require any
+	// dependecies and isn't used enough to matter imho
+	for (uint32_t i = 0u; i < mipmaplevel;++i) {
+		if(value <= 1) return 1;
+		value = value / 2;
+	}
+	return value;
+}
+
+// KTX specifys GL_UNPACK_ALIGNMENT = 4 which means some files have unexpected padding
+// that probably means you can't just memcpy the data out if you aren't using a GL
+// texture with GL_UNPACK_ALIGNMENT of 4
+// this will be true if this mipmap level is 'unpacked' so has padding on each row
+// you will need to handle.
+bool TinyKtx_IsMipMapLevelUnpacked(TinyKtx_ContextHandle handle, uint32_t mipmaplevel) {
+	TinyKtx_Context *ctx = (TinyKtx_Context *) handle;
+	if (ctx == NULL)
+		return false;
+	if (ctx->headerValid == false) {
+		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		return false;
+	}
+
+#ifdef TINY_KTX_EXPERIMENTAL_KTX2_SUPPORT
+	if(ctx->v2) {
+		// TODO GL decoder from vkformat and/or DFD
+		return false;
+	}
+#endif
+
+	if (ctx->header.glTypeSize < 4 &&
+			TinyKtx_ByteDividableFromGLType(ctx->header.glType)) {
+
+		uint32_t const s = ctx->header.glTypeSize;
+		uint32_t const n = TinyKtx_ElementCountFromGLFormat(ctx->header.glFormat);
+		if (n == 0) {
+			ctx->callbacks.error(ctx->user, "TinyKtx_ElementCountFromGLFormat error");
+			return false;
+		}
+
+		uint32_t const w = TinyKtx_MipMapReduce(ctx->header.pixelWidth, mipmaplevel);
+		uint32_t const snl = s * n * w;
+		uint32_t const k = ((snl + 3u) & ~3u);
+
+		if(k != snl) {
+			return true;
+		}
+	}
+	return false;
+}
+uint32_t TinyKtx_UnpackedRowStride(TinyKtx_ContextHandle handle, uint32_t mipmaplevel) {
+	TinyKtx_Context *ctx = (TinyKtx_Context *) handle;
+	if (ctx == NULL)
+		return 0;
+	if (ctx->headerValid == false) {
+		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		return 0;
+	}
+
+#ifdef TINY_KTX_EXPERIMENTAL_KTX2_SUPPORT
+	if(ctx->v2) {
+		// TODO GL decoder from vkformat and/or DFD
+		return 0;
+	}
+#endif
+
+	if (ctx->header.glTypeSize < 4 &&
+			TinyKtx_ByteDividableFromGLType(ctx->header.glType)) {
+
+		uint32_t const s = ctx->header.glTypeSize;
+		uint32_t const n = TinyKtx_ElementCountFromGLFormat(ctx->header.glFormat);
+		if (n == 0) {
+			ctx->callbacks.error(ctx->user, "TinyKtx_ElementCountFromGLFormat error");
+			return 0;
+		}
+
+		uint32_t const w = TinyKtx_MipMapReduce(ctx->header.pixelWidth, mipmaplevel);
+		uint32_t const snl = s * n * w;
+		uint32_t const k = ((snl + 3u) & ~3u);
+		return k;
+	}
+	return 0;
+}
+
+
+bool TinyKtx_WriteImageGL(TinyKtx_WriteCallbacks const *callbacks,
+													void *user,
+													uint32_t width,
+													uint32_t height,
+													uint32_t depth,
+													uint32_t slices,
+													uint32_t mipmaplevels,
+													uint32_t format,
+													uint32_t internalFormat,
+													uint32_t baseFormat,
+													uint32_t type,
+													uint32_t typeSize,
+													bool cubemap,
+													uint32_t const *mipmapsizes,
+													void const **mipmaps) {
+
+	TinyKtx_Header header;
+	memcpy(header.identifier, TinyKtx_fileIdentifier, 12);
+	header.endianness = 0x04030201;
+	header.glFormat = format;
+	header.glInternalFormat = internalFormat;
+	header.glBaseInternalFormat = baseFormat;
+	header.glType = type;
+	header.glTypeSize = typeSize;
+	header.pixelWidth = width;
+	header.pixelHeight = (height == 1) ? 0 : height;
+	header.pixelDepth = (depth == 1) ? 0 : depth;
+	header.numberOfArrayElements = (slices == 1) ? 0 : slices;
+	header.numberOfFaces = cubemap ? 6 : 1;
+	header.numberOfMipmapLevels = mipmaplevels;
+	// TODO keyvalue pair data
+	header.bytesOfKeyValueData = 0;
+	callbacks->write(user, &header, sizeof(TinyKtx_Header));
+
+	uint32_t w = (width == 0) ? 1 : width;
+	uint32_t h = (height == 0) ? 1 : height;
+	uint32_t d = (depth == 0) ? 1 : depth;
+	uint32_t sl = (slices == 0) ? 1 : slices;
+	static uint8_t const padding[4] = {0, 0, 0, 0};
+
+	for (uint32_t i = 0u; i < mipmaplevels; ++i) {
+
+		bool writeRaw = true;
+
+		if(	typeSize < 4 &&
+				TinyKtx_ByteDividableFromGLType(type)) {
+
+			uint32_t const s = typeSize;
+			uint32_t const n = TinyKtx_ElementCountFromGLFormat(format);
+			if (n == 0) {
+				callbacks->error(user, "TinyKtx_ElementCountFromGLFormat error");
+				return false;
+			}
+			uint32_t const snl = s * n * w;
+			uint32_t const k = ((snl + 3u) & ~3u);
+
+			uint32_t const size = (k * h * d * snl);
+			if (size < mipmapsizes[i]) {
+				callbacks->error(user, "Internal size error, padding should only ever expand");
+				return false;
+			}
+
+			// if we need to expand for padding take the slow per row write route
+			if (size > mipmapsizes[i]) {
+				callbacks->write(user, &size, sizeof(uint32_t));
+
+				uint8_t const *src = mipmaps[i];
+				for (uint32_t ww = 0u; ww < sl; ++ww) {
+					for (uint32_t zz = 0; zz < d; ++zz) {
+						for (uint32_t yy = 0; yy < h; ++yy) {
+							callbacks->write(user, src, snl);
+							callbacks->write(user, padding, k - snl);
+							src += snl;
+						}
+					}
+				}
+				uint32_t paddCount = ((size + 3u) & ~3u) - size;
+				if(paddCount > 3) {
+					callbacks->error(user, "Internal error: padding bytes > 3");
+					return false;
+				}
+
+				callbacks->write(user, padding, paddCount);
+				writeRaw = false;
+			}
+		}
+
+		if(writeRaw) {
+			uint32_t const size = ((mipmapsizes[i] + 3u) & ~3u);
+			callbacks->write(user, mipmapsizes + i, sizeof(uint32_t));
+			callbacks->write(user, mipmaps[i], mipmapsizes[i]);
+			callbacks->write(user, padding, size - mipmapsizes[i]);
+		}
+
+		if(w > 1) w = w / 2;
+		if(h > 1) h = h / 2;
+		if(d > 1) d = d / 2;
+	}
+
+	return true;
 }
 
 bool TinyKtx_WriteImage(TinyKtx_WriteCallbacks const *callbacks,
@@ -2122,8 +2330,6 @@ bool TinyKtx_WriteImage(TinyKtx_WriteCallbacks const *callbacks,
 	);
 
 }
-#endif // end #if TINYKTX_WANT_TINYKTX_FORMAT != 0
-
 #endif
 
 #ifdef __cplusplus

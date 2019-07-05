@@ -30,4 +30,14 @@ set(Deps
 		)
 ADD_LIB(${LibName} "${Interface}" "${Src}" "${Deps}")
 
+set( Tests
+		runner.cpp
+		test_tinyktx.cpp
+		)
+set( TestDeps
+		al2o3_catch2
+		al2o3_vfile
+		al2o3_stb
+		utils_simple_logmanager)
+ADD_LIB_TESTS(${LibName} "${Interface}" "${Tests}" "${TestDeps}")
 
