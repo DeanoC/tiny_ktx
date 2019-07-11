@@ -65,7 +65,7 @@ TEST_CASE("Check Files", "[TinyKtx Loader]") {
 
 TEST_CASE("TinyKtx Create/Destroy Context", "[TinyKtx Loader]") {
 	TinyKtx_Callbacks callbacks {
-			&tinyktxCallbackError,
+			&tinyktxddsCallbackError,
 			&tinyktxCallbackAlloc,
 			&tinyktxCallbackFree,
 			tinyktxCallbackRead,
@@ -87,7 +87,7 @@ TEST_CASE("TinyKtx Create/Destroy Context", "[TinyKtx Loader]") {
 
 TEST_CASE("TinyKtx readheader & dimensions", "[TinyKtx Loader]") {
 	TinyKtx_Callbacks callbacks {
-			&tinyktxCallbackError,
+			&tinyktxddsCallbackError,
 			&tinyktxCallbackAlloc,
 			&tinyktxCallbackFree,
 			tinyktxCallbackRead,
@@ -151,7 +151,7 @@ static bool CmpFlipped(	uint32_t w,
 
 TEST_CASE("TinyKtx rgb-reference okay", "[TinyKtx Loader]") {
 	TinyKtx_Callbacks callbacks {
-			&tinyktxCallbackError,
+			&tinyktxddsCallbackError,
 			&tinyktxCallbackAlloc,
 			&tinyktxCallbackFree,
 			tinyktxCallbackRead,
@@ -193,7 +193,7 @@ TEST_CASE("TinyKtx rgb-reference okay", "[TinyKtx Loader]") {
 
 TEST_CASE("TinyKtx luminance-reference okay", "[TinyKtx Loader]") {
 	TinyKtx_Callbacks callbacks {
-			&tinyktxCallbackError,
+			&tinyktxddsCallbackError,
 			&tinyktxCallbackAlloc,
 			&tinyktxCallbackFree,
 			tinyktxCallbackRead,
@@ -235,7 +235,7 @@ TEST_CASE("TinyKtx luminance-reference okay", "[TinyKtx Loader]") {
 
 TEST_CASE("TinyKtx git hub #2 (image size before image raw data broken) fix test", "[TinyKtx Loader]") {
 	TinyKtx_Callbacks callbacks {
-			&tinyktxCallbackError,
+			&tinyktxddsCallbackError,
 			&tinyktxCallbackAlloc,
 			&tinyktxCallbackFree,
 			tinyktxCallbackRead,
@@ -279,7 +279,7 @@ TEST_CASE("TinyKtx git hub #2 (image size before image raw data broken) fix test
 
 TEST_CASE("TinyKtx mipmap reference check", "[TinyKtx Loader]") {
 	TinyKtx_Callbacks callbacks {
-			&tinyktxCallbackError,
+			&tinyktxddsCallbackError,
 			&tinyktxCallbackAlloc,
 			&tinyktxCallbackFree,
 			tinyktxCallbackRead,
