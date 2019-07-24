@@ -1,6 +1,6 @@
+#include "tiny_ktx/tinyktx.h"
 #include "al2o3_platform/platform.h"
 #include "al2o3_memory/memory.h"
-#include "tiny_ktx/tinyktx.h"
 #include "al2o3_catch2/catch2.hpp"
 #include "al2o3_vfile/vfile.hpp"
 #include "al2o3_stb/stb_image.h"
@@ -65,7 +65,7 @@ TEST_CASE("Check Files", "[TinyKtx Loader]") {
 
 TEST_CASE("TinyKtx Create/Destroy Context", "[TinyKtx Loader]") {
 	TinyKtx_Callbacks callbacks {
-			&tinyktxddsCallbackError,
+			&tinyktxCallbackError,
 			&tinyktxCallbackAlloc,
 			&tinyktxCallbackFree,
 			tinyktxCallbackRead,
@@ -87,7 +87,7 @@ TEST_CASE("TinyKtx Create/Destroy Context", "[TinyKtx Loader]") {
 
 TEST_CASE("TinyKtx readheader & dimensions", "[TinyKtx Loader]") {
 	TinyKtx_Callbacks callbacks {
-			&tinyktxddsCallbackError,
+			&tinyktxCallbackError,
 			&tinyktxCallbackAlloc,
 			&tinyktxCallbackFree,
 			tinyktxCallbackRead,
@@ -134,16 +134,45 @@ static bool CmpFlipped(	uint32_t w,
 
 	for (auto i = 0u; i < h; ++i) {
 		uint8_t const *srcBackup = src;
+		uint8_t const *dstBackup = dst;
 
 		for (auto j = 0u; j < w; ++j) {
-			src += pixByte;
 			for(auto p = 0u; p < pixByte;++p) {
 				if(src[p] != dst[p]) return false;
 			}
+			src += pixByte;
+			dst += pixByte;
 		}
 
 		src = srcBackup + srcStride;
-		dst = dst + ((h-1-i) * dstStride);
+		dst = dstBackup - dstStride;
+	}
+
+	return true;
+}
+
+static bool CmpSame(	uint32_t w,
+												 uint32_t h,
+												 uint8_t pixByte,
+												 uint32_t srcStride,
+												 uint32_t dstStride,
+												 uint8_t const* src,
+												 uint8_t const* dst) {
+
+	for (auto i = 0u; i < h; ++i) {
+		uint8_t const *srcBackup = src;
+		uint8_t const *dstBackup = dst;
+
+		for (auto j = 0u; j < w; ++j) {
+			for(auto p = 0u; p < pixByte;++p) {
+				if(src[p] != dst[p]) return false;
+			}
+			src += pixByte;
+			dst += pixByte;
+		}
+
+		src = srcBackup + srcStride;
+		dst = dstBackup + dstStride;
 	}
 
 	return true;
@@ -151,7 +180,7 @@ static bool CmpFlipped(	uint32_t w,
 
 TEST_CASE("TinyKtx rgb-reference okay", "[TinyKtx Loader]") {
 	TinyKtx_Callbacks callbacks {
-			&tinyktxddsCallbackError,
+			&tinyktxCallbackError,
 			&tinyktxCallbackAlloc,
 			&tinyktxCallbackFree,
 			tinyktxCallbackRead,
@@ -185,7 +214,7 @@ TEST_CASE("TinyKtx rgb-reference okay", "[TinyKtx Loader]") {
 	REQUIRE(refdata);
 
 	auto ktxdata =  (uint8_t const*)TinyKtx_ImageRawData(ctx, 0);
-	REQUIRE(CmpFlipped(w, h, 3, w * cmp, w * cmp, refdata, ktxdata) == 0);
+	REQUIRE(CmpFlipped(w, h, 3, w * cmp, w * cmp, refdata, ktxdata));
 
 	MEMORY_FREE((void*)refdata);
 	TinyKtx_DestroyContext(ctx);
@@ -193,7 +222,7 @@ TEST_CASE("TinyKtx rgb-reference okay", "[TinyKtx Loader]") {
 
 TEST_CASE("TinyKtx luminance-reference okay", "[TinyKtx Loader]") {
 	TinyKtx_Callbacks callbacks {
-			&tinyktxddsCallbackError,
+			&tinyktxCallbackError,
 			&tinyktxCallbackAlloc,
 			&tinyktxCallbackFree,
 			tinyktxCallbackRead,
@@ -221,13 +250,14 @@ TEST_CASE("TinyKtx luminance-reference okay", "[TinyKtx Loader]") {
 	REQUIRE(w == TinyKtx_Width(ctx));
 	REQUIRE(h == TinyKtx_Height(ctx));
 	REQUIRE(TinyKtx_GetFormat(ctx) == TKTX_R8_UNORM);
+	REQUIRE(cmp == 1);
 
 	VFile_Seek(reffile, origin, VFile_SD_Begin);
 	stbi_uc *refdata = stbi_load_from_callbacks(&stbi_callbacks, (void*)reffile.owned, &w, &h, &cmp, cmp);
 	REQUIRE(refdata);
 
 	auto ktxdata =  (uint8_t const*)TinyKtx_ImageRawData(ctx, 0);
-	REQUIRE(CmpFlipped(w, h, 3, w * cmp, w * cmp, refdata, ktxdata) == 0);
+	REQUIRE(CmpSame(w, h, 1, w * cmp, w * cmp, refdata, ktxdata));
 
 	MEMORY_FREE((void*)refdata);
 	TinyKtx_DestroyContext(ctx);
@@ -235,7 +265,7 @@ TEST_CASE("TinyKtx luminance-reference okay", "[TinyKtx Loader]") {
 
 TEST_CASE("TinyKtx git hub #2 (image size before image raw data broken) fix test", "[TinyKtx Loader]") {
 	TinyKtx_Callbacks callbacks {
-			&tinyktxddsCallbackError,
+			&tinyktxCallbackError,
 			&tinyktxCallbackAlloc,
 			&tinyktxCallbackFree,
 			tinyktxCallbackRead,
@@ -271,7 +301,7 @@ TEST_CASE("TinyKtx git hub #2 (image size before image raw data broken) fix test
 	REQUIRE(refdata);
 
 	auto ktxdata =  (uint8_t const*)TinyKtx_ImageRawData(ctx, 0);
-	REQUIRE(CmpFlipped(w, h, 3, w * cmp, w * cmp, refdata, ktxdata) == 0);
+	REQUIRE(CmpFlipped(w, h, 3, w * cmp, w * cmp, refdata, ktxdata));
 
 	MEMORY_FREE((void*)refdata);
 	TinyKtx_DestroyContext(ctx);
@@ -279,7 +309,7 @@ TEST_CASE("TinyKtx git hub #2 (image size before image raw data broken) fix test
 
 TEST_CASE("TinyKtx mipmap reference check", "[TinyKtx Loader]") {
 	TinyKtx_Callbacks callbacks {
-			&tinyktxddsCallbackError,
+			&tinyktxCallbackError,
 			&tinyktxCallbackAlloc,
 			&tinyktxCallbackFree,
 			tinyktxCallbackRead,
@@ -335,7 +365,7 @@ TEST_CASE("TinyKtx mipmap reference check", "[TinyKtx Loader]") {
 		}
 
 		auto ktxdata =  (uint8_t const*)TinyKtx_ImageRawData(ctx, i);
-		REQUIRE(CmpFlipped(w, h, 3, srcStride, dstStride, refdata, ktxdata) == 0);
+		REQUIRE(CmpFlipped(w, h, 3, srcStride, dstStride, refdata, ktxdata));
 		MEMORY_FREE((void*)refdata);
 	}
 
