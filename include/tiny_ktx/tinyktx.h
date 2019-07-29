@@ -1673,7 +1673,7 @@ TinyKtx_Format TinyKtx_CrackFormatFromGL(uint32_t const glformat,
 		}
 		break;
 
-	// apparently we get FORMAT formats in the internal format slot sometimes
+		// apparently we get FORMAT formats in the internal format slot sometimes
 	case TINYKTX_GL_FORMAT_RED:
 		switch(gltype) {
 		case TINYKTX_GL_TYPE_BYTE: return TKTX_R8_SNORM;
@@ -1723,7 +1723,7 @@ TinyKtx_Format TinyKtx_CrackFormatFromGL(uint32_t const glformat,
 		case TINYKTX_GL_TYPE_INT: return TKTX_R32G32B32A32_SINT;
 		case TINYKTX_GL_TYPE_UNSIGNED_INT: return TKTX_R32G32B32A32_UINT;
 		case TINYKTX_GL_TYPE_FLOAT: return TKTX_R32G32B32A32_SFLOAT;
-//	case TINYKTX_GL_TYPE_DOUBLE:				return TKTX_R64G64B64A64_SFLOAT;
+			//	case TINYKTX_GL_TYPE_DOUBLE:				return TKTX_R64G64B64A64_SFLOAT;
 		case TINYKTX_GL_TYPE_HALF_FLOAT: return TKTX_R16G16B16A16_SFLOAT;
 		default: return TKTX_UNDEFINED;
 		}
