@@ -1542,35 +1542,68 @@ TinyKtx_Format TinyKtx_CrackFormatFromGL(uint32_t const glformat,
 			}
 		}
 		break;
-
-	case TINYKTX_GL_INTFORMAT_R8: return TKTX_R8_UNORM;
-	case TINYKTX_GL_INTFORMAT_RG8: return TKTX_R8G8_UNORM;
-	case TINYKTX_GL_INTFORMAT_RGB8: return TKTX_R8G8B8_UNORM;
-	case TINYKTX_GL_INTFORMAT_RGBA8:
-		if(glformat == TINYKTX_GL_FORMAT_RGBA) {
-			if(gltype == TINYKTX_GL_TYPE_UNSIGNED_BYTE) {
-				return TKTX_R8G8B8A8_UNORM;
-			} else if(gltype == TINYKTX_GL_TYPE_BYTE) {
-				return TKTX_R8G8B8A8_SNORM;
+	case TINYKTX_GL_INTFORMAT_R8_SNORM:
+	case TINYKTX_GL_INTFORMAT_R8:
+		if(gltype == TINYKTX_GL_TYPE_BYTE || glinternalformat == TINYKTX_GL_INTFORMAT_R8_SNORM) {
+			return TKTX_R8_SNORM;
+		}	else {
+			return TKTX_R8_UNORM;
+		}
+		break;
+	case TINYKTX_GL_INTFORMAT_RG8_SNORM:
+	case TINYKTX_GL_INTFORMAT_RG8:
+		if(gltype == TINYKTX_GL_TYPE_BYTE ||
+				glinternalformat == TINYKTX_GL_INTFORMAT_RG8_SNORM) {
+			return TKTX_R8G8_SNORM;
+		}	else {
+			return TKTX_R8G8_UNORM;
+		}
+		break;
+	case TINYKTX_GL_INTFORMAT_RGB8_SNORM:
+	case TINYKTX_GL_INTFORMAT_RGB8:
+		if(glformat == TINYKTX_GL_FORMAT_BGR) {
+			if(gltype == TINYKTX_GL_TYPE_BYTE ||
+					glinternalformat == TINYKTX_GL_INTFORMAT_RGB8_SNORM) {
+				return TKTX_B8G8R8_SNORM;
+			}	else {
+				return TKTX_B8G8R8_UNORM;
 			}
-		} else if(glformat == TINYKTX_GL_FORMAT_BGRA) {
-			if(gltype == TINYKTX_GL_TYPE_UNSIGNED_BYTE) {
-				return TKTX_B8G8R8A8_UNORM;
-			} else if(gltype == TINYKTX_GL_TYPE_BYTE) {
-				return TKTX_B8G8R8A8_SNORM;
-			}
-		} else if(glformat == TINYKTX_GL_FORMAT_ABGR) {
-			if(gltype == TINYKTX_GL_TYPE_UNSIGNED_BYTE) {
-				return TKTX_A8B8G8R8_UNORM_PACK32;
-			} else if(gltype == TINYKTX_GL_TYPE_BYTE) {
-				return TKTX_A8B8G8R8_SNORM_PACK32;
+		} else {
+			if(gltype == TINYKTX_GL_TYPE_BYTE ||
+					glinternalformat == TINYKTX_GL_INTFORMAT_RGB8_SNORM) {
+				return TKTX_R8G8B8_SNORM;
+			}	else {
+				return TKTX_R8G8B8_UNORM;
 			}
 		}
 		break;
-	case TINYKTX_GL_INTFORMAT_R8_SNORM: return TKTX_R8_SNORM;
-	case TINYKTX_GL_INTFORMAT_RG8_SNORM: return TKTX_R8G8_SNORM;
-	case TINYKTX_GL_INTFORMAT_RGB8_SNORM: return TKTX_R8G8B8_SNORM;
-	case TINYKTX_GL_INTFORMAT_RGBA8_SNORM: return TKTX_R8G8B8A8_SNORM;
+	case TINYKTX_GL_INTFORMAT_RGBA8_SNORM:
+	case TINYKTX_GL_INTFORMAT_RGBA8:
+		if(glformat == TINYKTX_GL_FORMAT_RGBA) {
+			if(gltype == TINYKTX_GL_TYPE_BYTE ||
+					glinternalformat == TINYKTX_GL_INTFORMAT_RGBA8_SNORM) {
+				return TKTX_R8G8B8A8_SNORM;
+			} else if(gltype == TINYKTX_GL_TYPE_BYTE) {
+				return TKTX_R8G8B8A8_UNORM;
+			}
+		} else if(glformat == TINYKTX_GL_FORMAT_BGRA) {
+			if(gltype == TINYKTX_GL_TYPE_BYTE ||
+					glinternalformat == TINYKTX_GL_INTFORMAT_RGBA8_SNORM) {
+				return TKTX_B8G8R8A8_SNORM;
+			} else if(gltype == TINYKTX_GL_TYPE_BYTE ||
+					glinternalformat == TINYKTX_GL_INTFORMAT_RGBA8_SNORM) {
+				return TKTX_B8G8R8A8_UNORM;
+			}
+		} else if(glformat == TINYKTX_GL_FORMAT_ABGR) {
+			if(gltype == TINYKTX_GL_TYPE_BYTE ||
+					glinternalformat == TINYKTX_GL_INTFORMAT_RGBA8_SNORM) {
+				return TKTX_A8B8G8R8_SNORM_PACK32;
+			} else if(gltype == TINYKTX_GL_TYPE_BYTE ||
+					glinternalformat == TINYKTX_GL_INTFORMAT_RGBA8_SNORM) {
+				return TKTX_A8B8G8R8_UNORM_PACK32;
+			}
+		}
+		break;
 
 	case TINYKTX_GL_INTFORMAT_R16: return TKTX_R16_UNORM;
 	case TINYKTX_GL_INTFORMAT_RG16: return TKTX_R16G16_UNORM;
@@ -1584,7 +1617,14 @@ TinyKtx_Format TinyKtx_CrackFormatFromGL(uint32_t const glformat,
 
 	case TINYKTX_GL_INTFORMAT_R8I: return TKTX_R8_SINT;
 	case TINYKTX_GL_INTFORMAT_RG8I: return TKTX_R8G8_SINT;
-	case TINYKTX_GL_INTFORMAT_RGB8I:return TKTX_R8G8B8_SINT;
+	case TINYKTX_GL_INTFORMAT_RGB8I:
+		if(glformat == TINYKTX_GL_FORMAT_RGB || glformat == TINYKTX_GL_FORMAT_RGB_INTEGER) {
+			return TKTX_R8G8B8_SINT;
+		} else if(glformat == TINYKTX_GL_FORMAT_BGR || glformat == TINYKTX_GL_FORMAT_BGR_INTEGER) {
+			return TKTX_B8G8R8_SINT;
+		}
+		break;
+
 	case TINYKTX_GL_INTFORMAT_RGBA8I:
 		if(glformat == TINYKTX_GL_FORMAT_RGBA || glformat == TINYKTX_GL_FORMAT_RGBA_INTEGER) {
 			return TKTX_R8G8B8A8_SINT;
@@ -1602,12 +1642,22 @@ TinyKtx_Format TinyKtx_CrackFormatFromGL(uint32_t const glformat,
 
 	case TINYKTX_GL_INTFORMAT_R32I: return TKTX_R32_SINT;
 	case TINYKTX_GL_INTFORMAT_RG32I: return TKTX_R32G32_SINT;
-	case TINYKTX_GL_INTFORMAT_RGB32I: return TKTX_R32G32B32_SINT;
+	case TINYKTX_GL_INTFORMAT_RGB32I:
+		if(glformat == TINYKTX_GL_FORMAT_RGB || glformat == TINYKTX_GL_FORMAT_RGB_INTEGER) {
+			return TKTX_R32G32B32_SINT;
+		}
+		break;
 	case TINYKTX_GL_INTFORMAT_RGBA32I:return TKTX_R32G32B32A32_SINT;
 
 	case TINYKTX_GL_INTFORMAT_R8UI: return TKTX_R8_UINT;
 	case TINYKTX_GL_INTFORMAT_RG8UI: return TKTX_R8G8_UINT;
-	case TINYKTX_GL_INTFORMAT_RGB8UI: return TKTX_R8G8B8_UINT;
+	case TINYKTX_GL_INTFORMAT_RGB8UI:
+		if(glformat == TINYKTX_GL_FORMAT_RGB || glformat == TINYKTX_GL_FORMAT_RGB_INTEGER) {
+			return TKTX_R8G8B8_UINT;
+		} else if(glformat == TINYKTX_GL_FORMAT_BGR || glformat == TINYKTX_GL_FORMAT_BGR_INTEGER) {
+			return TKTX_B8G8R8_UINT;
+		}
+		break;
 	case TINYKTX_GL_INTFORMAT_RGBA8UI:
 		if(glformat == TINYKTX_GL_FORMAT_RGBA || glformat == TINYKTX_GL_FORMAT_RGBA_INTEGER) {
 			return TKTX_R8G8B8A8_UINT;
