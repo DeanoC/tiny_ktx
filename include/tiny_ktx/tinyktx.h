@@ -1583,23 +1583,21 @@ TinyKtx_Format TinyKtx_CrackFormatFromGL(uint32_t const glformat,
 			if(gltype == TINYKTX_GL_TYPE_BYTE ||
 					glinternalformat == TINYKTX_GL_INTFORMAT_RGBA8_SNORM) {
 				return TKTX_R8G8B8A8_SNORM;
-			} else if(gltype == TINYKTX_GL_TYPE_BYTE) {
+			} else if(gltype == TINYKTX_GL_TYPE_UNSIGNED_BYTE) {
 				return TKTX_R8G8B8A8_UNORM;
 			}
 		} else if(glformat == TINYKTX_GL_FORMAT_BGRA) {
 			if(gltype == TINYKTX_GL_TYPE_BYTE ||
 					glinternalformat == TINYKTX_GL_INTFORMAT_RGBA8_SNORM) {
 				return TKTX_B8G8R8A8_SNORM;
-			} else if(gltype == TINYKTX_GL_TYPE_BYTE ||
-					glinternalformat == TINYKTX_GL_INTFORMAT_RGBA8_SNORM) {
+			} else if(gltype == TINYKTX_GL_TYPE_UNSIGNED_BYTE) {
 				return TKTX_B8G8R8A8_UNORM;
 			}
 		} else if(glformat == TINYKTX_GL_FORMAT_ABGR) {
 			if(gltype == TINYKTX_GL_TYPE_BYTE ||
 					glinternalformat == TINYKTX_GL_INTFORMAT_RGBA8_SNORM) {
 				return TKTX_A8B8G8R8_SNORM_PACK32;
-			} else if(gltype == TINYKTX_GL_TYPE_BYTE ||
-					glinternalformat == TINYKTX_GL_INTFORMAT_RGBA8_SNORM) {
+			} else if(gltype == TINYKTX_GL_TYPE_UNSIGNED_BYTE) {
 				return TKTX_A8B8G8R8_UNORM_PACK32;
 			}
 		}
