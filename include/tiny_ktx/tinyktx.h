@@ -514,7 +514,7 @@ typedef enum TinyKtx_Format {
 #undef TINYKTX_MEV
 
 // tiny_imageformat/format needs included before tinyktx.h for this functionality
-#ifdef TINYIMAGEFORMAT_IMAGEFORMAT_H
+#ifdef TINYIMAGEFORMAT_BASE_H_
 TinyImageFormat TinyImageFormat_FromTinyKtxFormat(TinyKtx_Format format);
 TinyKtx_Format TinyImageFormat_ToTinyKtxFormat(TinyImageFormat format);
 #endif
@@ -2062,7 +2062,7 @@ bool TinyKtx_WriteImageGL(TinyKtx_WriteCallbacks const *callbacks,
 			if (size > mipmapsizes[i]) {
 				callbacks->write(user, &size, sizeof(uint32_t));
 
-				uint8_t const *src = mipmaps[i];
+				uint8_t const *src = (uint8_t const*) mipmaps[i];
 				for (uint32_t ww = 0u; ww < sl; ++ww) {
 					for (uint32_t zz = 0; zz < d; ++zz) {
 						for (uint32_t yy = 0; yy < h; ++yy) {
@@ -2135,8 +2135,9 @@ bool TinyKtx_WriteImage(TinyKtx_WriteCallbacks const *callbacks,
 
 }
 
-// tiny_imageformat/formatcracker.h needs included before tinyktx.h for this functionality
-#ifdef TINYIMAGEFORMAT_IMAGEFORMAT_H
+// tiny_imageformat/tinyimageformat.h pr tinyimageformat_base.h needs included
+// before tinyktx.h for this functionality
+#ifdef TINYIMAGEFORMAT_BASE_H_
 TinyImageFormat TinyImageFormat_FromTinyKtxFormat(TinyKtx_Format format)
 {
 	switch(format) {
