@@ -32,13 +32,12 @@ typedef int64_t (*TinyKtx_TellFunc)(void *user);
 typedef void (*TinyKtx_ErrorFunc)(void *user, char const *msg);
 
 typedef struct TinyKtx_Callbacks {
-	TinyKtx_ErrorFunc error;
-	TinyKtx_AllocFunc alloc;
-	TinyKtx_FreeFunc free;
-	TinyKtx_ReadFunc read;
-	TinyKtx_SeekFunc seek;
-	TinyKtx_TellFunc tell;
-
+	TinyKtx_ErrorFunc errorFn;
+	TinyKtx_AllocFunc allocFn;
+	TinyKtx_FreeFunc freeFn;
+	TinyKtx_ReadFunc readFn;
+	TinyKtx_SeekFunc seekFn;
+	TinyKtx_TellFunc tellFn;
 } TinyKtx_Callbacks;
 
 TinyKtx_ContextHandle TinyKtx_CreateContext(TinyKtx_Callbacks const *callbacks, void *user);
@@ -83,10 +82,10 @@ void const *TinyKtx_ImageRawData(TinyKtx_ContextHandle handle, uint32_t mipmaple
 typedef void (*TinyKtx_WriteFunc)(void *user, void const *buffer, size_t byteCount);
 
 typedef struct TinyKtx_WriteCallbacks {
-	TinyKtx_ErrorFunc error;
-	TinyKtx_AllocFunc alloc;
-	TinyKtx_FreeFunc free;
-	TinyKtx_WriteFunc write;
+	TinyKtx_ErrorFunc errorFn;
+	TinyKtx_AllocFunc allocFn;
+	TinyKtx_FreeFunc freeFn;
+	TinyKtx_WriteFunc writeFn;
 } TinyKtx_WriteCallbacks;
 
 
@@ -823,35 +822,35 @@ static uint8_t TinyKtx_fileIdentifier[12] = {
 static void TinyKtx_NullErrorFunc(void *user, char const *msg) {}
 
 TinyKtx_ContextHandle TinyKtx_CreateContext(TinyKtx_Callbacks const *callbacks, void *user) {
-	TinyKtx_Context *ctx = (TinyKtx_Context *) callbacks->alloc(user, sizeof(TinyKtx_Context));
+	TinyKtx_Context *ctx = (TinyKtx_Context *) callbacks->allocFn(user, sizeof(TinyKtx_Context));
 	if (ctx == NULL)
 		return NULL;
 
 	memset(ctx, 0, sizeof(TinyKtx_Context));
 	memcpy(&ctx->callbacks, callbacks, sizeof(TinyKtx_Callbacks));
 	ctx->user = user;
-	if (ctx->callbacks.error == NULL) {
-		ctx->callbacks.error = &TinyKtx_NullErrorFunc;
+	if (ctx->callbacks.errorFn == NULL) {
+		ctx->callbacks.errorFn = &TinyKtx_NullErrorFunc;
 	}
 
-	if (ctx->callbacks.read == NULL) {
-		ctx->callbacks.error(user, "TinyKtx must have read callback");
+	if (ctx->callbacks.readFn == NULL) {
+		ctx->callbacks.errorFn(user, "TinyKtx must have read callback");
 		return NULL;
 	}
-	if (ctx->callbacks.alloc == NULL) {
-		ctx->callbacks.error(user, "TinyKtx must have alloc callback");
+	if (ctx->callbacks.allocFn == NULL) {
+		ctx->callbacks.errorFn(user, "TinyKtx must have alloc callback");
 		return NULL;
 	}
-	if (ctx->callbacks.free == NULL) {
-		ctx->callbacks.error(user, "TinyKtx must have free callback");
+	if (ctx->callbacks.freeFn == NULL) {
+		ctx->callbacks.errorFn(user, "TinyKtx must have free callback");
 		return NULL;
 	}
-	if (ctx->callbacks.seek == NULL) {
-		ctx->callbacks.error(user, "TinyKtx must have seek callback");
+	if (ctx->callbacks.seekFn == NULL) {
+		ctx->callbacks.errorFn(user, "TinyKtx must have seek callback");
 		return NULL;
 	}
-	if (ctx->callbacks.tell == NULL) {
-		ctx->callbacks.error(user, "TinyKtx must have tell callback");
+	if (ctx->callbacks.tellFn == NULL) {
+		ctx->callbacks.errorFn(user, "TinyKtx must have tell callback");
 		return NULL;
 	}
 
@@ -866,7 +865,7 @@ void TinyKtx_DestroyContext(TinyKtx_ContextHandle handle) {
 		return;
 	TinyKtx_Reset(handle);
 
-	ctx->callbacks.free(ctx->user, ctx);
+	ctx->callbacks.freeFn(ctx->user, ctx);
 }
 
 void TinyKtx_Reset(TinyKtx_ContextHandle handle) {
@@ -881,12 +880,12 @@ void TinyKtx_Reset(TinyKtx_ContextHandle handle) {
 
 	// free memory of sub data
 	if (ctx->keyData != NULL) {
-		callbacks.free(user, (void *) ctx->keyData);
+		callbacks.freeFn(user, (void *) ctx->keyData);
 	}
 
 	for (int i = 0; i < TINYKTX_MAX_MIPMAPLEVELS; ++i) {
 		if (ctx->mipmaps[i] != NULL) {
-			callbacks.free(user, (void *) ctx->mipmaps[i]);
+			callbacks.freeFn(user, (void *) ctx->mipmaps[i]);
 		}
 	}
 
@@ -907,11 +906,11 @@ bool TinyKtx_ReadHeader(TinyKtx_ContextHandle handle) {
 	if (ctx == NULL)
 		return false;
 
-	ctx->headerPos = ctx->callbacks.tell(ctx->user);
-	ctx->callbacks.read(ctx->user, &ctx->header, sizeof(TinyKtx_Header));
+	ctx->headerPos = ctx->callbacks.tellFn(ctx->user);
+	ctx->callbacks.readFn(ctx->user, &ctx->header, sizeof(TinyKtx_Header));
 
 	if (memcmp(&ctx->header.identifier, TinyKtx_fileIdentifier, 12) != 0) {
-		ctx->callbacks.error(ctx->user, "Not a KTX file or corrupted as identified isn't valid");
+		ctx->callbacks.errorFn(ctx->user, "Not a KTX file or corrupted as identified isn't valid");
 		return false;
 	}
 
@@ -921,19 +920,19 @@ bool TinyKtx_ReadHeader(TinyKtx_ContextHandle handle) {
 		ctx->sameEndian = false;
 	} else {
 		// corrupt or mid endian?
-		ctx->callbacks.error(ctx->user, "Endian Error");
+		ctx->callbacks.errorFn(ctx->user, "Endian Error");
 		return false;
 	}
 
 	if (ctx->header.numberOfFaces != 1 && ctx->header.numberOfFaces != 6) {
-		ctx->callbacks.error(ctx->user, "no. of Faces must be 1 or 6");
+		ctx->callbacks.errorFn(ctx->user, "no. of Faces must be 1 or 6");
 		return false;
 	}
 
-	ctx->keyData = (TinyKtx_KeyValuePair const *) ctx->callbacks.alloc(ctx->user, ctx->header.bytesOfKeyValueData);
-	ctx->callbacks.read(ctx->user, (void *) ctx->keyData, ctx->header.bytesOfKeyValueData);
+	ctx->keyData = (TinyKtx_KeyValuePair const *) ctx->callbacks.allocFn(ctx->user, ctx->header.bytesOfKeyValueData);
+	ctx->callbacks.readFn(ctx->user, (void *) ctx->keyData, ctx->header.bytesOfKeyValueData);
 
-	ctx->firstImagePos = ctx->callbacks.tell(ctx->user);
+	ctx->firstImagePos = ctx->callbacks.tellFn(ctx->user);
 
 	ctx->headerValid = true;
 	return true;
@@ -944,12 +943,12 @@ bool TinyKtx_GetValue(TinyKtx_ContextHandle handle, char const *key, void const 
 	if (ctx == NULL)
 		return false;
 	if (ctx->headerValid == false) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return false;
 	}
 
 	if (ctx->keyData == NULL) {
-		ctx->callbacks.error(ctx->user, "No key value data in this KTX");
+		ctx->callbacks.errorFn(ctx->user, "No key value data in this KTX");
 		return false;
 	}
 
@@ -972,7 +971,7 @@ bool TinyKtx_Is1D(TinyKtx_ContextHandle handle) {
 	if (ctx == NULL)
 		return false;
 	if (ctx->headerValid == false) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return false;
 	}
 	return (ctx->header.pixelHeight <= 1) && (ctx->header.pixelDepth <= 1 );
@@ -982,7 +981,7 @@ bool TinyKtx_Is2D(TinyKtx_ContextHandle handle) {
 	if (ctx == NULL)
 		return false;
 	if (ctx->headerValid == false) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return false;
 	}
 
@@ -993,7 +992,7 @@ bool TinyKtx_Is3D(TinyKtx_ContextHandle handle) {
 	if (ctx == NULL)
 		return false;
 	if (ctx->headerValid == false) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return false;
 	}
 
@@ -1005,7 +1004,7 @@ bool TinyKtx_IsCubemap(TinyKtx_ContextHandle handle) {
 	if (ctx == NULL)
 		return false;
 	if (ctx->headerValid == false) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return false;
 	}
 
@@ -1016,7 +1015,7 @@ bool TinyKtx_IsArray(TinyKtx_ContextHandle handle) {
 	if (ctx == NULL)
 		return false;
 	if (ctx->headerValid == false) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return false;
 	}
 
@@ -1032,7 +1031,7 @@ bool TinyKtx_Dimensions(TinyKtx_ContextHandle handle,
 	if (ctx == NULL)
 		return false;
 	if (ctx->headerValid == false) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return false;
 	}
 
@@ -1052,7 +1051,7 @@ uint32_t TinyKtx_Width(TinyKtx_ContextHandle handle) {
 	if (ctx == NULL)
 		return 0;
 	if (ctx->headerValid == false) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return 0;
 	}
 	return ctx->header.pixelWidth;
@@ -1064,7 +1063,7 @@ uint32_t TinyKtx_Height(TinyKtx_ContextHandle handle) {
 	if (ctx == NULL)
 		return 0;
 	if (ctx->headerValid == false) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return 0;
 	}
 
@@ -1076,7 +1075,7 @@ uint32_t TinyKtx_Depth(TinyKtx_ContextHandle handle) {
 	if (ctx == NULL)
 		return 0;
 	if (ctx->headerValid == false) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return 0;
 	}
 	return ctx->header.pixelDepth;
@@ -1087,7 +1086,7 @@ uint32_t TinyKtx_ArraySlices(TinyKtx_ContextHandle handle) {
 	if (ctx == NULL)
 		return 0;
 	if (ctx->headerValid == false) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return 0;
 	}
 
@@ -1099,7 +1098,7 @@ uint32_t TinyKtx_NumberOfMipmaps(TinyKtx_ContextHandle handle) {
 	if (ctx == NULL)
 		return 0;
 	if (ctx->headerValid == false) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return 0;
 	}
 
@@ -1111,7 +1110,7 @@ bool TinyKtx_NeedsGenerationOfMipmaps(TinyKtx_ContextHandle handle) {
 	if (ctx == NULL)
 		return false;
 	if (ctx->headerValid == false) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return false;
 	}
 
@@ -1123,7 +1122,7 @@ bool TinyKtx_NeedsEndianCorrecting(TinyKtx_ContextHandle handle) {
 	if (ctx == NULL)
 		return false;
 	if (ctx->headerValid == false) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return false;
 	}
 
@@ -1135,7 +1134,7 @@ bool TinyKtx_GetFormatGL(TinyKtx_ContextHandle handle, uint32_t *glformat, uint3
 	if (ctx == NULL)
 		return false;
 	if (ctx->headerValid == false) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return false;
 	}
 
@@ -1152,11 +1151,11 @@ static uint32_t TinyKtx_imageSize(TinyKtx_ContextHandle handle, uint32_t mipmapl
 	TinyKtx_Context *ctx = (TinyKtx_Context *) handle;
 
 	if (mipmaplevel >= ctx->header.numberOfMipmapLevels) {
-		ctx->callbacks.error(ctx->user, "Invalid mipmap level");
+		ctx->callbacks.errorFn(ctx->user, "Invalid mipmap level");
 		return 0;
 	}
 	if (mipmaplevel >= TINYKTX_MAX_MIPMAPLEVELS) {
-		ctx->callbacks.error(ctx->user, "Invalid mipmap level");
+		ctx->callbacks.errorFn(ctx->user, "Invalid mipmap level");
 		return 0;
 	}
 	if (!seekLast && ctx->mipMapSizes[mipmaplevel] != 0)
@@ -1169,14 +1168,14 @@ static uint32_t TinyKtx_imageSize(TinyKtx_ContextHandle handle, uint32_t mipmapl
 		if (ctx->mipMapSizes[i] != 0) {
 			size = ctx->mipMapSizes[i];
 			if (seekLast && i == mipmaplevel) {
-				ctx->callbacks.seek(ctx->user, currentOffset + sizeof(uint32_t));
+				ctx->callbacks.seekFn(ctx->user, currentOffset + sizeof(uint32_t));
 			}
 		} else {
 			// otherwise seek and read it
-			ctx->callbacks.seek(ctx->user, currentOffset);
-			size_t readchk = ctx->callbacks.read(ctx->user, &size, sizeof(uint32_t));
+			ctx->callbacks.seekFn(ctx->user, currentOffset);
+			size_t readchk = ctx->callbacks.readFn(ctx->user, &size, sizeof(uint32_t));
 			if(readchk != 4) {
-				ctx->callbacks.error(ctx->user, "Reading image size error");
+				ctx->callbacks.errorFn(ctx->user, "Reading image size error");
 				return 0;
 			}
 			// so in the really small print KTX v1 states GL_UNPACK_ALIGNMENT = 4
@@ -1202,7 +1201,7 @@ uint32_t TinyKtx_ImageSize(TinyKtx_ContextHandle handle, uint32_t mipmaplevel) {
 	if (ctx == NULL) return 0;
 
 	if (ctx->headerValid == false) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return 0;
 	}
 	return TinyKtx_imageSize(handle, mipmaplevel, false);
@@ -1214,17 +1213,17 @@ void const *TinyKtx_ImageRawData(TinyKtx_ContextHandle handle, uint32_t mipmaple
 		return NULL;
 
 	if (ctx->headerValid == false) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return NULL;
 	}
 
 	if (mipmaplevel >= ctx->header.numberOfMipmapLevels) {
-		ctx->callbacks.error(ctx->user, "Invalid mipmap level");
+		ctx->callbacks.errorFn(ctx->user, "Invalid mipmap level");
 		return NULL;
 	}
 
 	if (mipmaplevel >= TINYKTX_MAX_MIPMAPLEVELS) {
-		ctx->callbacks.error(ctx->user, "Invalid mipmap level");
+		ctx->callbacks.errorFn(ctx->user, "Invalid mipmap level");
 		return NULL;
 	}
 
@@ -1235,9 +1234,9 @@ void const *TinyKtx_ImageRawData(TinyKtx_ContextHandle handle, uint32_t mipmaple
 	if (size == 0)
 		return NULL;
 
-	ctx->mipmaps[mipmaplevel] = (uint8_t const*) ctx->callbacks.alloc(ctx->user, size);
+	ctx->mipmaps[mipmaplevel] = (uint8_t const*) ctx->callbacks.allocFn(ctx->user, size);
 	if (ctx->mipmaps[mipmaplevel]) {
-		ctx->callbacks.read(ctx->user, (void *) ctx->mipmaps[mipmaplevel], size);
+		ctx->callbacks.readFn(ctx->user, (void *) ctx->mipmaps[mipmaplevel], size);
 	}
 
 	return ctx->mipmaps[mipmaplevel];
@@ -1911,7 +1910,7 @@ TinyKtx_Format TinyKtx_GetFormat(TinyKtx_ContextHandle handle) {
 		return TKTX_UNDEFINED;
 
 	if (ctx->headerValid == false) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return TKTX_UNDEFINED;
 	}
 
@@ -1944,7 +1943,7 @@ bool TinyKtx_IsMipMapLevelUnpacked(TinyKtx_ContextHandle handle, uint32_t mipmap
 	if (ctx == NULL)
 		return false;
 	if (ctx->headerValid == false) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return false;
 	}
 
@@ -1954,7 +1953,7 @@ bool TinyKtx_IsMipMapLevelUnpacked(TinyKtx_ContextHandle handle, uint32_t mipmap
 		uint32_t const s = ctx->header.glTypeSize;
 		uint32_t const n = TinyKtx_ElementCountFromGLFormat(ctx->header.glFormat);
 		if (n == 0) {
-			ctx->callbacks.error(ctx->user, "TinyKtx_ElementCountFromGLFormat error");
+			ctx->callbacks.errorFn(ctx->user, "TinyKtx_ElementCountFromGLFormat error");
 			return false;
 		}
 
@@ -1973,7 +1972,7 @@ uint32_t TinyKtx_UnpackedRowStride(TinyKtx_ContextHandle handle, uint32_t mipmap
 	if (ctx == NULL)
 		return 0;
 	if (ctx->headerValid == false) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return 0;
 	}
 
@@ -1983,7 +1982,7 @@ uint32_t TinyKtx_UnpackedRowStride(TinyKtx_ContextHandle handle, uint32_t mipmap
 		uint32_t const s = ctx->header.glTypeSize;
 		uint32_t const n = TinyKtx_ElementCountFromGLFormat(ctx->header.glFormat);
 		if (n == 0) {
-			ctx->callbacks.error(ctx->user, "TinyKtx_ElementCountFromGLFormat error");
+			ctx->callbacks.errorFn(ctx->user, "TinyKtx_ElementCountFromGLFormat error");
 			return 0;
 		}
 
@@ -2028,7 +2027,7 @@ bool TinyKtx_WriteImageGL(TinyKtx_WriteCallbacks const *callbacks,
 	header.numberOfMipmapLevels = mipmaplevels;
 	// TODO keyvalue pair data
 	header.bytesOfKeyValueData = 0;
-	callbacks->write(user, &header, sizeof(TinyKtx_Header));
+	callbacks->writeFn(user, &header, sizeof(TinyKtx_Header));
 
 	uint32_t w = (width == 0) ? 1 : width;
 	uint32_t h = (height == 0) ? 1 : height;
@@ -2046,7 +2045,7 @@ bool TinyKtx_WriteImageGL(TinyKtx_WriteCallbacks const *callbacks,
 			uint32_t const s = typeSize;
 			uint32_t const n = TinyKtx_ElementCountFromGLFormat(format);
 			if (n == 0) {
-				callbacks->error(user, "TinyKtx_ElementCountFromGLFormat error");
+				callbacks->errorFn(user, "TinyKtx_ElementCountFromGLFormat error");
 				return false;
 			}
 			uint32_t const snl = s * n * w;
@@ -2054,40 +2053,40 @@ bool TinyKtx_WriteImageGL(TinyKtx_WriteCallbacks const *callbacks,
 
 			uint32_t const size = (k * h * d * snl);
 			if (size < mipmapsizes[i]) {
-				callbacks->error(user, "Internal size error, padding should only ever expand");
+				callbacks->errorFn(user, "Internal size error, padding should only ever expand");
 				return false;
 			}
 
 			// if we need to expand for padding take the slow per row write route
 			if (size > mipmapsizes[i]) {
-				callbacks->write(user, &size, sizeof(uint32_t));
+				callbacks->writeFn(user, &size, sizeof(uint32_t));
 
 				uint8_t const *src = (uint8_t const*) mipmaps[i];
 				for (uint32_t ww = 0u; ww < sl; ++ww) {
 					for (uint32_t zz = 0; zz < d; ++zz) {
 						for (uint32_t yy = 0; yy < h; ++yy) {
-							callbacks->write(user, src, snl);
-							callbacks->write(user, padding, k - snl);
+							callbacks->writeFn(user, src, snl);
+							callbacks->writeFn(user, padding, k - snl);
 							src += snl;
 						}
 					}
 				}
 				uint32_t paddCount = ((size + 3u) & ~3u) - size;
 				if(paddCount > 3) {
-					callbacks->error(user, "Internal error: padding bytes > 3");
+					callbacks->errorFn(user, "Internal error: padding bytes > 3");
 					return false;
 				}
 
-				callbacks->write(user, padding, paddCount);
+				callbacks->writeFn(user, padding, paddCount);
 				writeRaw = false;
 			}
 		}
 
 		if(writeRaw) {
 			uint32_t const size = ((mipmapsizes[i] + 3u) & ~3u);
-			callbacks->write(user, mipmapsizes + i, sizeof(uint32_t));
-			callbacks->write(user, mipmaps[i], mipmapsizes[i]);
-			callbacks->write(user, padding, size - mipmapsizes[i]);
+			callbacks->writeFn(user, mipmapsizes + i, sizeof(uint32_t));
+			callbacks->writeFn(user, mipmaps[i], mipmapsizes[i]);
+			callbacks->writeFn(user, padding, size - mipmapsizes[i]);
 		}
 
 		if(w > 1) w = w / 2;
