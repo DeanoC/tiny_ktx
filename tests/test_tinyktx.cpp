@@ -4,6 +4,17 @@
 #include "al2o3_catch2/catch2.hpp"
 #include "al2o3_vfile/vfile.hpp"
 #include "al2o3_stb/stb_image.h"
+#include "al2o3_os/filesystem.h"
+
+static const char* gBasePath = "input/testimages";
+
+#define SET_PATH()   char existCurDir[1024]; \
+	Os_GetCurrentDir(existCurDir, sizeof(existCurDir)); \
+	char path[2048]; \
+	strcpy(path, existCurDir); \
+	strcat(path, gBasePath); \
+	Os_SetCurrentDir(path)
+#define RESTORE_PATH()   Os_SetCurrentDir(existCurDir)
 
 static void tinyktxCallbackError(void *user, char const *msg) {
 	LOGERRORF("Tiny_Ktx ERROR: %s", msg);
@@ -41,6 +52,7 @@ static int stbIoCallbackEof(void *user) {
 
 
 TEST_CASE("Check Files", "[TinyKtx Loader]") {
+	SET_PATH();
 #define CHK_FILE_EXISTS(filename) \
 	{ VFile::ScopedFile reffile = VFile::File::FromFile(filename, Os_FM_ReadBinary); \
 	if(!reffile) { \
@@ -61,6 +73,7 @@ TEST_CASE("Check Files", "[TinyKtx Loader]") {
 	CHK_FILE_EXISTS("level6.ppm");
 
 #undef CHK_FILE_EXISTS
+
 }
 
 TEST_CASE("TinyKtx Create/Destroy Context", "[TinyKtx Loader]") {
@@ -96,6 +109,7 @@ TEST_CASE("TinyKtx readheader & dimensions", "[TinyKtx Loader]") {
 	};
 
 	VFile::ScopedFile file = VFile::File::FromFile("rgb-reference.ktx", Os_FM_ReadBinary);
+	REQUIRE(file);
 	auto ctx = TinyKtx_CreateContext(&callbacks, (void*)file.owned);
 	REQUIRE(TinyKtx_ReadHeader(ctx));
 
@@ -196,6 +210,8 @@ TEST_CASE("TinyKtx rgb-reference okay", "[TinyKtx Loader]") {
 
 	VFile::ScopedFile file = VFile::File::FromFile("rgb-reference.ktx", Os_FM_ReadBinary);
 	VFile::ScopedFile reffile = VFile::File::FromFile("rgb.ppm", Os_FM_ReadBinary);
+	REQUIRE(file);
+	REQUIRE(reffile);
 
 	auto ctx = TinyKtx_CreateContext(&callbacks, (void*)file.owned);
 
@@ -238,6 +254,8 @@ TEST_CASE("TinyKtx luminance-reference okay", "[TinyKtx Loader]") {
 
 	VFile::ScopedFile file = VFile::File::FromFile("luminance-reference-metadata.ktx", Os_FM_ReadBinary);
 	VFile::ScopedFile reffile = VFile::File::FromFile("luminance.pgm", Os_FM_ReadBinary);
+	REQUIRE(file);
+	REQUIRE(reffile);
 
 	auto ctx = TinyKtx_CreateContext(&callbacks, (void*)file.owned);
 
@@ -281,6 +299,8 @@ TEST_CASE("TinyKtx git hub #2 (image size before image raw data broken) fix test
 
 	VFile::ScopedFile file = VFile::File::FromFile("rgb-reference.ktx", Os_FM_ReadBinary);
 	VFile::ScopedFile reffile = VFile::File::FromFile("rgb.ppm", Os_FM_ReadBinary);
+	REQUIRE(file);
+	REQUIRE(reffile);
 	auto ctx = TinyKtx_CreateContext(&callbacks, (void*)file.owned);
 
 	REQUIRE(TinyKtx_ReadHeader(ctx));
@@ -333,6 +353,8 @@ TEST_CASE("TinyKtx mipmap reference check", "[TinyKtx Loader]") {
 			VFile::File::FromFile("level5.ppm", Os_FM_ReadBinary),
 			VFile::File::FromFile("level6.ppm", Os_FM_ReadBinary),
 	};
+	REQUIRE(file);
+
 	auto ctx = TinyKtx_CreateContext(&callbacks, (void*)file.owned);
 	REQUIRE(TinyKtx_ReadHeader(ctx));
 
