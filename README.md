@@ -76,7 +76,7 @@ For each mipmap level in the file (TinyKtx_NumberOfMipmaps)
 Load snippet
 ```c
 static void tinyktxCallbackError(void *user, char const *msg) {
-	LOGERRORF("Tiny_Ktx ERROR: %s", msg);
+	LOGERROR("Tiny_Ktx ERROR: %s", msg);
 }
 static void *tinyktxCallbackAlloc(void *user, size_t size) {
 	return MEMORY_MALLOC(size);
@@ -127,7 +127,7 @@ AL2O3_EXTERN_C Image_ImageHeader const *Image_LoadKTX(VFile_Handle handle) {
 		if(i == 0) topImage = image;
 
 		if(Image_ByteCountOf(image) != TinyKtx_ImageSize(ctx, i)) {
-			LOGERRORF("KTX file %s mipmap %i size error", VFile_GetName(handle), i);
+			LOGERROR("KTX file %s mipmap %i size error", VFile_GetName(handle), i);
 			Image_Destroy(topImage);
 			TinyKtx_DestroyContext(ctx);
 			return nullptr;
@@ -167,7 +167,7 @@ Pass the number of mipmaps and arrays filled with the size of each mipmap image 
 Save snippet
 ```c
 static void tinyktxCallbackError(void *user, char const *msg) {
-	LOGERRORF("Tiny_Ktx ERROR: %s", msg);
+	LOGERROR("Tiny_Ktx ERROR: %s", msg);
 }
 
 static void *tinyktxCallbackAlloc(void *user, size_t size) {

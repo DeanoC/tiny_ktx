@@ -17,7 +17,7 @@ static const char* gBasePath = "input/testimages";
 #define RESTORE_PATH()   Os_SetCurrentDir(existCurDir)
 
 static void tinyktxCallbackError(void *user, char const *msg) {
-	LOGERRORF("Tiny_Ktx ERROR: %s", msg);
+	LOGERROR("Tiny_Ktx ERROR: %s", msg);
 }
 static void *tinyktxCallbackAlloc(void *user, size_t size) {
 	return MEMORY_MALLOC(size);
